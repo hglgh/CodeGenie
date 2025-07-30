@@ -1,0 +1,38 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none"
+  xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 绿色主背景渐变 -->
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f1f8e9;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#c8e6c9;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#81c784;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4caf50;stop-opacity:1" />
+    </linearGradient>
+    <!-- 文字渐变 -->
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8fff8;stop-opacity:0.95" />
+    </linearGradient>
+    <!-- 光晕效果 -->
+    <radialGradient id="glowGradient" cx="50%" cy="25%" r="65%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+
+  <!-- 主背景 -->
+  <rect width="32" height="32" rx="8" fill="url(#mainGradient)"/>
+
+  <!-- 光晕效果 -->
+  <ellipse cx="16" cy="8" rx="14" ry="10" fill="url(#glowGradient)"/>
+
+  <!-- 装饰性几何图形 -->
+  <circle cx="24" cy="8" r="2" fill="white" opacity="0.3"/>
+  <circle cx="8" cy="24" r="1.5" fill="white" opacity="0.25"/>
+
+  <!-- 主文字 -->
+  <text x="16" y="21" text-anchor="middle" fill="url(#textGradient)" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" letter-spacing="0.5px">CG</text>
+
+  <!-- 底部小点装饰 -->
+  <rect x="14" y="25" width="4" height="1" rx="0.5" fill="white" opacity="0.5"/>
+</svg>
