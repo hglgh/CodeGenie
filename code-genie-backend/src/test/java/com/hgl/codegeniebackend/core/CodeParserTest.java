@@ -2,6 +2,7 @@ package com.hgl.codegeniebackend.core;
 
 import com.hgl.codegeniebackend.ai.model.HtmlCodeResult;
 import com.hgl.codegeniebackend.ai.model.MultiFileCodeResult;
+import com.hgl.codegeniebackend.core.deprecated.CodeParser;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

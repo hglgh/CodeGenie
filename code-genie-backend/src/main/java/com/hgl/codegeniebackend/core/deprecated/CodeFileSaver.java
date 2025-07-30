@@ -1,4 +1,4 @@
-package com.hgl.codegeniebackend.core;
+package com.hgl.codegeniebackend.core.deprecated;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
  * @Author HGL
  * @Create: 2025/7/30 14:07
  */
+@Deprecated
 public class CodeFileSaver {
 
     // 文件保存根目录

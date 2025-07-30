@@ -1,4 +1,4 @@
-package com.hgl.codegeniebackend.core;
+package com.hgl.codegeniebackend.core.deprecated;
 
 import com.hgl.codegeniebackend.ai.AiCodeGeneratorService;
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
@@ -22,6 +22,7 @@ import java.io.File;
  * @Author HGL
  * @Create: 2025/7/30 14:34
  */
+@Deprecated
 @Slf4j
 @Service
 public class AiCodeGeneratorFacade {

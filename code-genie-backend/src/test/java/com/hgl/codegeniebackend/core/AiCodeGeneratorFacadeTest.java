@@ -1,6 +1,7 @@
 package com.hgl.codegeniebackend.core;
 
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
+import com.hgl.codegeniebackend.core.deprecated.AiCodeGeneratorFacade;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
