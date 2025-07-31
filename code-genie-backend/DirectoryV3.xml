@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+ <trees>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/core/deprecated/CodeFileSaver.java" title="文件写入工具类"/>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/core/deprecated/AiCodeGeneratorFacade.java"
+           title="AI 代码生成外观类(门面模式)"/>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/core/deprecated/CodeParser.java" title="代码解析器"/>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/parser/CodeParser.java" title="代码解析器策略接口"/>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/parser/CodeParserExecutor.java" title="代码解析执行器"/>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/saver/CodeFileSaverTemplate.java"
+           title="抽象代码文件保存器 - 模板方法模式"/>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/saver/CodeFileSaverExecutor.java" title="代码文件保存执行器"/>
+     <tree path="/src/main/java/com/hgl/codegeniebackend/core/AiCodeGeneratorFacadeEnhanced.java"
+           title="AI 代码生成外观类(门面模式)抽象优化"/>
+ </trees>
