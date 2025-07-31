@@ -1,4 +1,4 @@
-package com.hgl.codegeniebackend.saver;
+package com.hgl.codegeniebackend.core.saver;
 
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
 import com.hgl.codegeniebackend.ai.model.HtmlCodeResult;
@@ -7,9 +7,6 @@ import com.hgl.codegeniebackend.common.exception.BusinessException;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 
 import java.io.File;
-
-import static com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum.HTML;
-import static com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum.MULTI_FILE;
 
 /**
  * ClassName: CodeFileSaverExecutor

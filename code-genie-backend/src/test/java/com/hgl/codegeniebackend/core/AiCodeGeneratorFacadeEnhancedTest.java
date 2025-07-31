@@ -24,7 +24,7 @@ class AiCodeGeneratorFacadeEnhancedTest {
 
     @Test
     void generateAndSaveCode() {
-        File file = aiCodeGeneratorFacadeEnhanced.generateAndSaveCode("生成程序员HGL的个人博客，不超过20行代码", CodeGenTypeEnum.HTML);
+        File file = aiCodeGeneratorFacadeEnhanced.generateAndSaveCode("生成程序员HGL的个人博客", CodeGenTypeEnum.HTML);
         Assertions.assertNotNull(file);
     }
 

@@ -1,4 +1,4 @@
-package com.hgl.codegeniebackend.parser;
+package com.hgl.codegeniebackend.core.parser;
 
 import com.hgl.codegeniebackend.ai.model.MultiFileCodeResult;
 

@@ -7,9 +7,8 @@ import com.hgl.codegeniebackend.ai.model.MultiFileCodeResult;
 import com.hgl.codegeniebackend.common.exception.BusinessException;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import com.hgl.codegeniebackend.common.exception.ThrowUtils;
-import com.hgl.codegeniebackend.core.deprecated.CodeFileSaver;
-import com.hgl.codegeniebackend.parser.CodeParserExecutor;
-import com.hgl.codegeniebackend.saver.CodeFileSaverExecutor;
+import com.hgl.codegeniebackend.core.parser.CodeParserExecutor;
+import com.hgl.codegeniebackend.core.saver.CodeFileSaverExecutor;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,11 +43,11 @@ public class AiCodeGeneratorFacadeEnhanced {
         return switch (codeGenTypeEnum) {
             case HTML -> {
                 HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHtmlCode(userMessage);
-                yield CodeFileSaver.saveHtmlCodeResult(htmlCodeResult);
+                yield CodeFileSaverExecutor.executeSaver(htmlCodeResult, CodeGenTypeEnum.HTML);
             }
             case MULTI_FILE -> {
                 MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorService.generateMultiFileCode(userMessage);
-                yield CodeFileSaver.saveMultiFileCodeResult(multiFileCodeResult);
+                yield CodeFileSaverExecutor.executeSaver(multiFileCodeResult, CodeGenTypeEnum.MULTI_FILE);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -105,8 +104,7 @@ public class AiCodeGeneratorFacadeEnhanced {
                         log.error("保存失败: {}", e.getMessage());
                     }
                 })
-                .doOnError(throwable -> {
-                    log.error("保存代码失败：{}", throwable.getMessage());
-                });
+                .doOnError(throwable -> log.error("保存代码失败：{}", throwable.getMessage())
+                );
     }
 }

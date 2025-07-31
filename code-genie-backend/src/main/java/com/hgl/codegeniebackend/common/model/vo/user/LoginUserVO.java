@@ -1,10 +1,5 @@
 package com.hgl.codegeniebackend.common.model.vo.user;
 
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.ObjUtil;
-import com.hgl.codegeniebackend.common.exception.ErrorCode;
-import com.hgl.codegeniebackend.common.exception.ThrowUtils;
-import com.hgl.codegeniebackend.common.model.entity.User;
 import lombok.Data;
 
 import java.io.Serial;
