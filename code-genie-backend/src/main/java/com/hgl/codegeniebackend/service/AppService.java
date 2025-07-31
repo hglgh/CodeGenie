@@ -1,6 +1,7 @@
 package com.hgl.codegeniebackend.service;
 
 import com.hgl.codegeniebackend.common.DeleteRequest;
+import com.hgl.codegeniebackend.common.model.entity.User;
 import com.hgl.codegeniebackend.common.model.request.app.AppAddRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppAdminUpdateRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppQueryRequest;
@@ -11,6 +12,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.hgl.codegeniebackend.common.model.entity.App;
 import jakarta.servlet.http.HttpServletRequest;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -21,6 +23,16 @@ import java.util.List;
  * @since 2025-07-31
  */
 public interface AppService extends IService<App> {
+
+    /**
+     * 应用聊天生成代码（流式 SSE）
+     *
+     * @param appId     应用ID
+     * @param message   消息
+     * @param loginUser 登录用户
+     * @return 代码
+     */
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
     /**
      * 添加应用

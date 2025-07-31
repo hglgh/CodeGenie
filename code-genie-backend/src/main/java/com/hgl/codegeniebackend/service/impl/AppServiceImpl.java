@@ -17,6 +17,7 @@ import com.hgl.codegeniebackend.common.model.request.app.AppQueryRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppUpdateRequest;
 import com.hgl.codegeniebackend.common.model.vo.app.AppVO;
 import com.hgl.codegeniebackend.common.model.vo.user.UserVO;
+import com.hgl.codegeniebackend.core.AiCodeGeneratorFacadeEnhanced;
 import com.hgl.codegeniebackend.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -27,6 +28,7 @@ import com.hgl.codegeniebackend.service.AppService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,6 +48,25 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private AiCodeGeneratorFacadeEnhanced aiCodeGeneratorFacadeEnhanced;
+
+    @Override
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
+        // 1. 参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用id不能为空");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户输入不能为空");
+        // 2. 查询应用信息
+        App app = this.mapper.selectOneById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 3. 验证用户是否有权限访问该应用，仅本人可以生成代码
+        ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "用户没有权限");
+        // 4. 获取应用的代码生成类型
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
+        ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "不支持的代码生成类型");
+        return aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+    }
 
     @Override
     public long addApp(AppAddRequest appAddRequest, HttpServletRequest request) {

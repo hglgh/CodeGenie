@@ -26,13 +26,13 @@ class AiCodeGeneratorFacadeEnhancedTest {
 
     @Test
     void testGenerateAndSaveCode() {
-        File file = aiCodeGeneratorFacadeEnhanced.generateAndSaveCode("生成程序员HGL的个人博客", CodeGenTypeEnum.HTML);
+        File file = aiCodeGeneratorFacadeEnhanced.generateAndSaveCode("生成程序员HGL的个人博客", CodeGenTypeEnum.HTML, 1L);
         Assertions.assertNotNull(file);
     }
 
     @Test
     void testGenerateAndSaveCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream("生成程序员HGL的个人博客", CodeGenTypeEnum.MULTI_FILE);
+        Flux<String> codeStream = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream("生成程序员HGL的个人博客", CodeGenTypeEnum.MULTI_FILE, 1L);
         //阻塞等待所有数据收集完成
         List<String> result = codeStream.collectList().block();
         // 测试结果

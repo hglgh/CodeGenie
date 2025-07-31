@@ -1,5 +1,6 @@
 package com.hgl.codegeniebackend.controller;
 
+import cn.hutool.core.util.StrUtil;
 import com.hgl.codegeniebackend.common.BaseResponse;
 import com.hgl.codegeniebackend.common.DeleteRequest;
 import com.hgl.codegeniebackend.common.ResultUtils;
@@ -7,25 +8,22 @@ import com.hgl.codegeniebackend.common.annotation.AuthCheck;
 import com.hgl.codegeniebackend.common.constant.UserConstant;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import com.hgl.codegeniebackend.common.exception.ThrowUtils;
+import com.hgl.codegeniebackend.common.model.entity.User;
 import com.hgl.codegeniebackend.common.model.request.app.AppAddRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppAdminUpdateRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppQueryRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppUpdateRequest;
 import com.hgl.codegeniebackend.common.model.vo.app.AppVO;
+import com.hgl.codegeniebackend.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.hgl.codegeniebackend.common.model.entity.App;
 import com.hgl.codegeniebackend.service.AppService;
-import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -41,6 +39,30 @@ public class AppController {
 
     @Resource
     private AppService appService;
+
+    @Resource
+    private UserService userService;
+
+    /**
+     * 应用聊天生成代码（流式 SSE）
+     *
+     * @param appId   应用 ID
+     * @param message 用户消息
+     * @param request 请求对象
+     * @return 生成结果流
+     */
+    @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> chatToGenCode(
+            @RequestParam Long appId,
+            @RequestParam String message,
+            HttpServletRequest request
+    ) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用id不能为空");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户输入不能为空");
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        return appService.chatToGenCode(appId, message, loginUser);
+    }
 
     /**
      * 创建应用
