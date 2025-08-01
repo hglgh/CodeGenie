@@ -1,0 +1,245 @@
+/* Ant Design 组件样式覆盖 */
+
+/* 按钮样式 */
+.ant-btn {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.ant-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  border: none;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+}
+
+/* 输入框样式 */
+.ant-input,
+.ant-input-password,
+.ant-textarea {
+  font-family: 'Inter', sans-serif;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-medium);
+  transition: all 0.3s ease;
+}
+
+.ant-input:focus,
+.ant-input-password:focus,
+.ant-textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* 表单样式 */
+.ant-form-item-label > label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ant-form-item-explain-error {
+  font-family: 'Inter', sans-serif;
+  color: var(--warning-color);
+}
+
+/* 菜单样式 */
+.ant-menu {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-menu-item {
+  font-weight: 500;
+}
+
+/* 头像样式 */
+.ant-avatar {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+
+/* 分页样式 */
+.ant-pagination {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-pagination-item {
+  font-weight: 500;
+}
+
+/* 下拉菜单样式 */
+.ant-dropdown {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  backdrop-filter: blur(20px);
+}
+
+.ant-dropdown-menu {
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+.ant-dropdown-menu-item {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  margin: 4px;
+  transition: all 0.3s ease;
+}
+
+.ant-dropdown-menu-item:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary-color);
+}
+
+/* 空间组件样式 */
+.ant-space {
+  font-family: 'Inter', sans-serif;
+}
+
+/* 布局样式 */
+.ant-layout-header {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-layout-footer {
+  font-family: 'Inter', sans-serif;
+}
+
+/* 消息提示样式 */
+.ant-message {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-message-notice-content {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(20px);
+}
+
+/* 模态框样式 */
+.ant-modal {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-modal-content {
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  backdrop-filter: blur(20px);
+}
+
+.ant-modal-header {
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+.ant-modal-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 卡片样式 */
+.ant-card {
+  font-family: 'Inter', sans-serif;
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+.ant-card-head {
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.ant-card-head-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 表格样式 */
+.ant-table {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-table-thead > tr > th {
+  background: rgba(248, 250, 252, 0.8);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+/* 标签样式 */
+.ant-tag {
+  font-family: 'Inter', sans-serif;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+/* 徽章样式 */
+.ant-badge {
+  font-family: 'Inter', sans-serif;
+}
+
+/* 进度条样式 */
+.ant-progress-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+
+/* 步骤条样式 */
+.ant-steps {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-steps-item-title {
+  font-weight: 600;
+}
+
+/* 时间轴样式 */
+.ant-timeline {
+  font-family: 'Inter', sans-serif;
+}
+
+/* 抽屉样式 */
+.ant-drawer-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+.ant-drawer-header {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+}
+
+.ant-drawer-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 通知样式 */
+.ant-notification {
+  font-family: 'Inter', sans-serif;
+}
+
+.ant-notification-notice {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  backdrop-filter: blur(20px);
+}
