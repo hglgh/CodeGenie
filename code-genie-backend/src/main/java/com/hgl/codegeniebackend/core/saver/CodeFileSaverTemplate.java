@@ -4,6 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
+import com.hgl.codegeniebackend.common.constant.AppConstant;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import com.hgl.codegeniebackend.common.exception.ThrowUtils;
 
@@ -20,7 +21,7 @@ import java.nio.charset.StandardCharsets;
  */
 public abstract class CodeFileSaverTemplate<T> {
     // 文件保存根目录
-    private static final String FILE_SAVE_ROOT_DIR = String.format("%s/temp/code_output", System.getProperty("user.dir"));
+    private static final String FILE_SAVE_ROOT_DIR = AppConstant.CODE_OUTPUT_ROOT_DIR;
 
     /**
      * 模板方法：保存代码的标准流程

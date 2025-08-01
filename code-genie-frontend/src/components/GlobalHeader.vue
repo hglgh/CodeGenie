@@ -1,179 +1,160 @@
 <template>
-  <div class="global-header">
-    <!-- Logo和标题 -->
-    <div class="logo-section">
-      <img src="/logo.svg" alt="Logo" class="logo" />
-      <span class="site-title">Code Genie</span>
-    </div>
-
-    <!-- 导航菜单 -->
-    <a-menu
-      v-model:selectedKeys="selectedKeys"
-      mode="horizontal"
-      class="nav-menu"
-      :items="menuItems"
-      @click="handleMenuClick"
-    />
-
-    <!-- 用户区域 -->
-    <div class="user-section">
-      <a-button type="primary" @click="handleLogin"> 登录 </a-button>
-    </div>
-  </div>
+  <a-layout-header class="header">
+    <a-row :wrap="false">
+      <!-- 左侧：Logo和标题 -->
+      <a-col flex="200px">
+        <RouterLink to="/">
+          <div class="header-left">
+            <img class="logo" src="@/assets/logo.png" alt="Logo" />
+            <h1 class="site-title">HGL应用生成</h1>
+          </div>
+        </RouterLink>
+      </a-col>
+      <!-- 中间：导航菜单 -->
+      <a-col flex="auto">
+        <a-menu
+          v-model:selectedKeys="selectedKeys"
+          mode="horizontal"
+          :items="menuItems"
+          @click="handleMenuClick"
+        />
+      </a-col>
+      <!-- 右侧：用户操作区域 -->
+      <a-col>
+        <div class="user-login-status">
+          <div v-if="loginUserStore.loginUser.id">
+            <a-dropdown>
+              <a-space>
+                <a-avatar :src="loginUserStore.loginUser.userAvatar" />
+                {{ loginUserStore.loginUser.userName ?? '无名' }}
+              </a-space>
+              <template #overlay>
+                <a-menu>
+                  <a-menu-item @click="doLogout">
+                    <LogoutOutlined />
+                    退出登录
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+          </div>
+          <div v-else>
+            <a-button type="primary" href="/user/login">登录</a-button>
+          </div>
+        </div>
+      </a-col>
+    </a-row>
+  </a-layout-header>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import type { MenuProps } from 'ant-design-vue'
+import { computed, h, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { type MenuProps, message } from 'ant-design-vue'
+import { useLoginUserStore } from '@/stores/loginUser.ts'
+import { userLogout } from '@/api/userController.ts'
+import { LogoutOutlined, HomeOutlined } from '@ant-design/icons-vue'
 
+const loginUserStore = useLoginUserStore()
 const router = useRouter()
-const route = useRoute()
+// 当前选中菜单
+const selectedKeys = ref<string[]>(['/'])
+// 监听路由变化，更新当前选中菜单
+router.afterEach((to, from, next) => {
+  selectedKeys.value = [to.path]
+})
 
-// 当前选中的菜单项
-const selectedKeys = ref<string[]>([])
-
-// 菜单配置
-const menuItems = computed<MenuProps['items']>(() => [
+// 菜单配置项
+const originItems = [
   {
     key: '/',
-    label: '首页',
-    title: '首页',
+    icon: () => h(HomeOutlined),
+    label: '主页',
+    title: '主页',
   },
   {
-    key: '/about',
-    label: '关于',
-    title: '关于',
+    key: '/admin/userManage',
+    label: '用户管理',
+    title: '用户管理',
   },
-])
+  {
+    key: '/admin/appManage',
+    label: '应用管理',
+    title: '应用管理',
+  },
+  {
+    key: 'others',
+    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '编程导航'),
+    title: '编程导航',
+  },
+]
 
-// 菜单点击处理
-const handleMenuClick = ({ key }: { key: string }) => {
-  router.push(key)
+// 过滤菜单项
+const filterMenus = (menus = [] as MenuProps['items']) => {
+  return menus?.filter((menu) => {
+    const menuKey = menu?.key as string
+    if (menuKey?.startsWith('/admin')) {
+      const loginUser = loginUserStore.loginUser
+      if (!loginUser || loginUser.userRole !== 'admin') {
+        return false
+      }
+    }
+    return true
+  })
 }
 
-// 登录按钮处理
-const handleLogin = () => {
-  console.log('登录功能待实现')
+// 展示在菜单的路由数组
+const menuItems = computed<MenuProps['items']>(() => filterMenus(originItems))
+
+// 处理菜单点击
+const handleMenuClick: MenuProps['onClick'] = (e) => {
+  const key = e.key as string
+  selectedKeys.value = [key]
+  // 跳转到对应页面
+  if (key.startsWith('/')) {
+    router.push(key)
+  }
 }
 
-// 监听路由变化更新选中状态
-import { watch } from 'vue'
-watch(
-  () => route.path,
-  (newPath) => {
-    selectedKeys.value = [newPath]
-  },
-  { immediate: true },
-)
+// 退出登录
+const doLogout = async () => {
+  const res = await userLogout()
+  if (res.data.code === 0) {
+    loginUserStore.setLoginUser({
+      userName: '未登录',
+    })
+    message.success('退出登录成功')
+    await router.push('/user/login')
+  } else {
+    message.error('退出登录失败，' + res.data.message)
+  }
+}
 </script>
 
 <style scoped>
-.global-header {
-  display: flex;
-  align-items: center;
-  height: 64px;
+.header {
+  background: #fff;
   padding: 0 24px;
-  background: transparent;
 }
 
-.logo-section {
+.header-left {
   display: flex;
   align-items: center;
-  margin-right: 40px;
-  flex-shrink: 0;
+  gap: 12px;
 }
 
 .logo {
-  height: 32px;
-  width: 32px;
-  margin-right: 12px;
+  height: 48px;
+  width: 48px;
 }
 
 .site-title {
+  margin: 0;
   font-size: 18px;
-  font-weight: 600;
-  color: #00695c;
-  white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
+  color: #1890ff;
 }
 
-.nav-menu {
-  flex: 1;
-  border-bottom: none;
-  line-height: 64px;
-  background: transparent;
-}
-
-.nav-menu :deep(.ant-menu-item) {
-  color: #00695c;
-  font-weight: 500;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-}
-
-.nav-menu :deep(.ant-menu-item:hover) {
-  color: #004d40;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-}
-
-.nav-menu :deep(.ant-menu-item-selected) {
-  color: #004d40;
-  background: rgba(255, 255, 255, 0.35);
-  border-bottom-color: #00695c;
-  border-radius: 6px 6px 0 0;
-}
-
-.user-section {
-  flex-shrink: 0;
-  margin-left: 24px;
-}
-
-.user-section :deep(.ant-btn-primary) {
-  background: rgba(102, 187, 106, 0.9);
-  border-color: rgba(102, 187, 106, 0.9);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(102, 187, 106, 0.3);
-  color: white;
-}
-
-.user-section :deep(.ant-btn-primary:hover) {
-  background: rgba(76, 175, 80, 0.95);
-  border-color: rgba(76, 175, 80, 0.95);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-  color: white;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .global-header {
-    padding: 0 16px;
-  }
-
-  .logo-section {
-    margin-right: 20px;
-  }
-
-  .site-title {
-    display: none;
-  }
-
-  .user-section {
-    margin-left: 16px;
-  }
-}
-
-@media (max-width: 576px) {
-  .global-header {
-    padding: 0 12px;
-  }
-
-  .logo-section {
-    margin-right: 12px;
-  }
-
-  .user-section {
-    margin-left: 12px;
-  }
+.ant-menu-horizontal {
+  border-bottom: none !important;
 }
 </style>

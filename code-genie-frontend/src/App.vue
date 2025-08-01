@@ -7,48 +7,23 @@ import BasicLayout from '@/layouts/BasicLayout.vue'
 </template>
 
 <style>
-/* 全局样式重置 */
+/* 全局样式优化 */
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
 }
 
-html,
 body {
-  height: 100%;
+  margin: 0;
+  padding: 0;
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: #f0f8ff;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-#app {
-  height: 100%;
-}
-
-/* 全局文字在绿蓝渐变背景上的优化 */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  color: #00695c;
-  font-weight: 600;
-}
-
-p {
-  color: #37474f;
-  line-height: 1.6;
-}
-
-/* 链接样式优化 */
-a {
-  color: #00838f;
-  transition: color 0.3s ease;
-}
-
-a:hover {
-  color: #0097a7;
+html {
+  overflow-x: hidden;
 }
 </style>

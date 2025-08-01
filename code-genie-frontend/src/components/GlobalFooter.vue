@@ -1,58 +1,37 @@
 <template>
-  <div class="global-footer">
+  <a-layout-footer class="footer">
     <div class="footer-content">
-      <span>© 2025 程序员</span>
-      <a
-        href="https://github.com/hglgh"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="author-link"
-      >
-        扈江离
-      </a>
+      <p class="copyright">
+        <a
+          href="https://github.com/hglgh/CodeGenie"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="author-link"
+        >
+          程序员HGL
+        </a>
+      </p>
     </div>
-  </div>
+  </a-layout-footer>
 </template>
 
 <script setup lang="ts">
-// 无需额外逻辑
+// 无需额外的响应式数据
 </script>
 
 <style scoped>
-.global-footer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 70px;
-  background: transparent;
-}
-
-.footer-content {
-  color: #00695c;
-  font-size: 14px;
+.footer {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
   text-align: center;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-  font-weight: 500;
+  padding: 20px;
+  margin-top: 40px;
+  border-top: 1px solid rgba(102, 126, 234, 0.1);
 }
 
-.author-link {
-  color: #004d40;
-  text-decoration: none;
-  margin-left: 4px;
-  transition: all 0.3s;
-  font-weight: 600;
-}
-
-.author-link:hover {
-  color: #00332a;
-  text-decoration: underline;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
-}
-
-/* 响应式设计 */
-@media (max-width: 576px) {
-  .footer-content {
-    font-size: 12px;
-  }
+.copyright {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
 }
 </style>
