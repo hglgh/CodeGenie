@@ -1,7 +1,6 @@
 package com.hgl.codegeniebackend.core.saver;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
 import com.hgl.codegeniebackend.common.constant.AppConstant;

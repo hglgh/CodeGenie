@@ -1,6 +1,7 @@
 package com.hgl.codegeniebackend.core;
 
 import com.hgl.codegeniebackend.ai.AiCodeGeneratorService;
+import com.hgl.codegeniebackend.ai.AiCodeGeneratorServiceFactory;
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
 import com.hgl.codegeniebackend.ai.model.HtmlCodeResult;
 import com.hgl.codegeniebackend.ai.model.MultiFileCodeResult;
@@ -29,7 +30,7 @@ import java.io.File;
 public class AiCodeGeneratorFacadeEnhanced {
 
     @Resource
-    private AiCodeGeneratorService aiCodeGeneratorService;
+    private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
     /**
      * 统一入口：根据类型生成并保存代码 (使用appId)
@@ -39,7 +40,9 @@ public class AiCodeGeneratorFacadeEnhanced {
      * @return 保存的目录
      */
     public File generateAndSaveCode(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
+
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "未指定生成类型");
+        AiCodeGeneratorService aiCodeGeneratorService = getAiCodeGeneratorService(appId);
         return switch (codeGenTypeEnum) {
             case HTML -> {
                 HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHtmlCode(userMessage);
@@ -64,6 +67,7 @@ public class AiCodeGeneratorFacadeEnhanced {
      */
     public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "未指定生成类型");
+        AiCodeGeneratorService aiCodeGeneratorService = getAiCodeGeneratorService(appId);
         return switch (codeGenTypeEnum) {
             case HTML -> {
                 Flux<String> codeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
@@ -106,5 +110,15 @@ public class AiCodeGeneratorFacadeEnhanced {
                 })
                 .doOnError(throwable -> log.error("保存代码失败：{}", throwable.getMessage())
                 );
+    }
+
+    /**
+     * 获取AI代码生成服务实例
+     *
+     * @param appId 应用ID
+     * @return AI代码生成服务实例
+     */
+    private AiCodeGeneratorService getAiCodeGeneratorService(Long appId) {
+        return aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
     }
 }

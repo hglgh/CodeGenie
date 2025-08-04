@@ -12,7 +12,9 @@ import com.hgl.codegeniebackend.common.constant.UserConstant;
 import com.hgl.codegeniebackend.common.exception.BusinessException;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import com.hgl.codegeniebackend.common.exception.ThrowUtils;
+import com.hgl.codegeniebackend.common.model.entity.App;
 import com.hgl.codegeniebackend.common.model.entity.User;
+import com.hgl.codegeniebackend.common.model.enums.ChatHistoryMessageTypeEnum;
 import com.hgl.codegeniebackend.common.model.request.app.AppAddRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppAdminUpdateRequest;
 import com.hgl.codegeniebackend.common.model.request.app.AppQueryRequest;
@@ -20,19 +22,21 @@ import com.hgl.codegeniebackend.common.model.request.app.AppUpdateRequest;
 import com.hgl.codegeniebackend.common.model.vo.app.AppVO;
 import com.hgl.codegeniebackend.common.model.vo.user.UserVO;
 import com.hgl.codegeniebackend.core.AiCodeGeneratorFacadeEnhanced;
+import com.hgl.codegeniebackend.mapper.AppMapper;
+import com.hgl.codegeniebackend.service.AppService;
+import com.hgl.codegeniebackend.service.ChatHistoryService;
 import com.hgl.codegeniebackend.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.hgl.codegeniebackend.common.model.entity.App;
-import com.hgl.codegeniebackend.mapper.AppMapper;
-import com.hgl.codegeniebackend.service.AppService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +50,7 @@ import java.util.stream.Collectors;
  * @author <a href="https://github.com/hglgh">hgl</a>
  * @since 2025-07-31
  */
+@Slf4j
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
@@ -54,6 +59,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private AiCodeGeneratorFacadeEnhanced aiCodeGeneratorFacadeEnhanced;
+
+    @Resource
+    private ChatHistoryService chatHistoryService;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -68,7 +76,28 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 4. 获取应用的代码生成类型
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "不支持的代码生成类型");
-        return aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        // 5. 通过校验后，添加用户消息到对话历史
+        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        // 6. 调用 AI 生成代码（流式）
+        Flux<String> contentFlux = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        // 7. 收集AI响应内容并在完成后记录到对话历史
+        StringBuilder aiResponseBuilder = new StringBuilder();
+        //收集AI响应内容
+        return contentFlux
+                // 收集AI响应内容
+                .doOnNext(aiResponseBuilder::append)
+                .doOnComplete(() -> {
+                    // 流式响应完成后，添加AI消息到对话历史
+                    String aiResponse = aiResponseBuilder.toString();
+                    if (StrUtil.isNotBlank(aiResponse)) {
+                        chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
+                        log.info("成功将AI响应的数据完整保存");
+                    }
+                }).doOnError(error -> {
+                    // 如果AI回复失败，也要记录错误消息
+                    String errorMessage = "AI回复失败: " + error.getMessage();
+                    chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
+                });
     }
 
     @Override
@@ -161,8 +190,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         // 管理员或者应用创建者才能操作
         ThrowUtils.throwIf(!oldApp.getUserId().equals(loginUser.getId()) && !UserConstant.ADMIN_ROLE.equals(loginUser.getUserRole()), ErrorCode.NO_AUTH_ERROR, "用户没有权限");
-        int delete = this.mapper.deleteById(id);
-        ThrowUtils.throwIf(delete <= 0, ErrorCode.OPERATION_ERROR, "删除应用失败");
+        boolean result = removeById(id);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除应用失败");
         return false;
     }
 
@@ -207,7 +236,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 .like("appName", appName)
                 .like("cover", cover)
                 .like("initPrompt", initPrompt)
-                .eq("codeGenType", codeGenType, true)
+                .eq("codeGenType", codeGenType)
                 .eq("deployKey", deployKey)
                 .eq("priority", priority)
                 .eq("userId", userId)
@@ -285,6 +314,32 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         int pageNum = appQueryRequest.getPageNum();
         Page<App> page = new Page<>(pageNum, pageSize);
         return getAppVoPage(appQueryRequest, pageSize, pageNum, page);
+    }
+
+    /**
+     * 删除应用时关联删除对话历史(重新方法)
+     *
+     * @param id 应用ID
+     * @return 是否成功
+     */
+    @Override
+    public boolean removeById(Serializable id) {
+        if (id == null) {
+            return false;
+        }
+        long appId = Long.parseLong(id.toString());
+        if (appId <= 0) {
+            return false;
+        }
+        try {
+            chatHistoryService.deleteByAppId(appId);
+            log.info("删除应用ID:{}关联的对话历史成功", appId);
+        } catch (Exception e) {
+            // 记录日志但不阻止应用删除
+            log.error("删除应用关联对话历史失败: {}", e.getMessage());
+        }
+        // 删除应用
+        return super.removeById(id);
     }
 
     /**

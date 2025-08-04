@@ -29,7 +29,7 @@ export async function deleteAppByAdmin(body: API.DeleteRequest, options?: { [key
 /** 此处后端没有提供注释 GET /app/admin/get/vo */
 export async function getAppVoByIdByAdmin(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getAppVOByIdByAdminParams,
+  params: API.getAppVoByIdByAdminParams,
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponseAppVO>('/app/admin/get/vo', {
@@ -113,7 +113,7 @@ export async function deployApp(body: API.AppDeployRequest, options?: { [key: st
 /** 此处后端没有提供注释 GET /app/get/vo */
 export async function getAppVoById(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getAppVOByIdParams,
+  params: API.getAppVoByIdParams,
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponseAppVO>('/app/get/vo', {

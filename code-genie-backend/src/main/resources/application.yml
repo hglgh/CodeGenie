@@ -2,7 +2,16 @@ server:
   port: 8123
   servlet:
     context-path: /api
+    # cookie 30 天过期
+    session:
+      cookie:
+        max-age: 2592000
 spring:
+  session:
+    redis:
+      namespace: spring:session
+    # session 30 天过期
+    timeout: 2592000
   application:
     name: code-genie-backend
   profiles:
@@ -12,6 +21,12 @@ spring:
     url: ${mysql.url}
     username: ${mysql.username}
     password: ${mysql.password}
+  data:
+    redis:
+      host: ${redis.host}
+      port: ${redis.port}
+      password:
+      ttl: 3600
 
 
 

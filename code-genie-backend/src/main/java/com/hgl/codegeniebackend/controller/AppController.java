@@ -9,9 +9,11 @@ import com.hgl.codegeniebackend.common.annotation.AuthCheck;
 import com.hgl.codegeniebackend.common.constant.UserConstant;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import com.hgl.codegeniebackend.common.exception.ThrowUtils;
+import com.hgl.codegeniebackend.common.model.entity.App;
 import com.hgl.codegeniebackend.common.model.entity.User;
 import com.hgl.codegeniebackend.common.model.request.app.*;
 import com.hgl.codegeniebackend.common.model.vo.app.AppVO;
+import com.hgl.codegeniebackend.service.AppService;
 import com.hgl.codegeniebackend.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
@@ -19,12 +21,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import com.hgl.codegeniebackend.common.model.entity.App;
-import com.hgl.codegeniebackend.service.AppService;
 import reactor.core.publisher.Flux;
 
-import java.util.List;
 import java.util.Map;
 
 /**

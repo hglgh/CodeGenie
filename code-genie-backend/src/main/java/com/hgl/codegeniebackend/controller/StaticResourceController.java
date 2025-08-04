@@ -1,4 +1,4 @@
-package com.hgl.codegeniebackend.controller.expansion;
+package com.hgl.codegeniebackend.controller;
 
 import com.hgl.codegeniebackend.common.constant.AppConstant;
 import jakarta.servlet.http.HttpServletRequest;
