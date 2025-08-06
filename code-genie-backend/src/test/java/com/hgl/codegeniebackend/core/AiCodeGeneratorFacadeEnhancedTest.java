@@ -32,7 +32,7 @@ class AiCodeGeneratorFacadeEnhancedTest {
 
     @Test
     void testGenerateAndSaveCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream("生成程序员HGL的个人博客", CodeGenTypeEnum.MULTI_FILE, 1L);
+        Flux<String> codeStream = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream("生成测试demo,不超过20行代码", CodeGenTypeEnum.MULTI_FILE, 2L);
         //阻塞等待所有数据收集完成
         List<String> result = codeStream.collectList().block();
         // 测试结果
