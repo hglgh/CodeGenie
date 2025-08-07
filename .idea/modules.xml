@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/CodeGenie.iml" filepath="$PROJECT_DIR$/CodeGenie.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/CodeGenie.iml" filepath="$PROJECT_DIR$/.idea/CodeGenie.iml" />
     </modules>
   </component>
 </project>
