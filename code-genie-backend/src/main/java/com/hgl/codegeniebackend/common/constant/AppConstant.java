@@ -31,6 +31,11 @@ public interface AppConstant {
     String CODE_DEPLOY_ROOT_DIR = String.format("%s/temp/code_deploy", System.getProperty("user.dir"));
 
     /**
+     * 应用截图目录
+     */
+    String SCREENSHOT_ROOT_DIR = String.format("%s/temp/screenshot", System.getProperty("user.dir"));
+
+    /**
      * 应用部署域名
      */
     String CODE_DEPLOY_HOST = "http://localhost";
