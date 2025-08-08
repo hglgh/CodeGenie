@@ -9,7 +9,7 @@ import com.hgl.codegeniebackend.common.constant.AppConstant;
 import com.hgl.codegeniebackend.common.exception.BusinessException;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import io.github.bonigarcia.wdm.WebDriverManager;
-import jakarta.annotation.PreDestroy;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
@@ -22,30 +22,75 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import java.io.File;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * ClassName: WebScreenshotUtils
+ * 使用连接池模式管理WebDriver的网页截图工具类
+ * 通过维护一个WebDriver池，按需分配和回收WebDriver实例
  *
- * @Package: com.hgl.codegeniebackend.ai.tools
- * @Description:
  * @Author HGL
- * @Create: 2025/8/7 15:00
+ * @Create 2025/8/8
  */
 @Slf4j
-public class WebScreenshotUtils {
-    private static final WebDriver WEB_DRIVER;
+public class WebScreenshotUtilsPooled {
+    private static final int DEFAULT_WIDTH = 1600;
+    private static final int DEFAULT_HEIGHT = 900;
     // 图片后缀
     private static final String IMAGE_SUFFIX = ".png";
     // 压缩图片后缀
     private static final String COMPRESSION_SUFFIX = "_compressed.jpg";
 
-    /*
-     * 静态初始化 Chrome 浏览器驱动
+    // 连接池配置
+    private static final int MAX_POOL_SIZE = 10;
+    private static final int MIN_POOL_SIZE = 2;
+    // 5分钟
+    private static final long KEEP_ALIVE_TIME = 300000L;
+
+    // WebDriver连接池
+    private static final BlockingQueue<WebDriverWrapper> WEB_DRIVER_POOL = new LinkedBlockingQueue<>(MAX_POOL_SIZE);
+
+    // 当前池中WebDriver数量
+    private static final AtomicInteger POOL_SIZE = new AtomicInteger(0);
+
+    // 是否正在运行
+    @Getter
+    private static volatile boolean running = true;
+
+    public static void setRunning(boolean running) {
+        WebScreenshotUtilsPooled.running = running;
+    }
+
+    /**
+     * WebDriver包装类，用于跟踪使用情况
      */
-    static {
-        final int defaultWidth = 1600;
-        final int defaultHeight = 900;
-        WEB_DRIVER = initChromeDriver(defaultWidth, defaultHeight);
+    private static class WebDriverWrapper {
+        private final WebDriver webDriver;
+        @Getter
+        private final long createTime;
+        @Getter
+        private long lastUseTime;
+
+        public WebDriverWrapper(WebDriver webDriver) {
+            this.webDriver = webDriver;
+            this.createTime = System.currentTimeMillis();
+            this.lastUseTime = System.currentTimeMillis();
+        }
+
+        public WebDriver getWebDriver() {
+            this.lastUseTime = System.currentTimeMillis();
+            return webDriver;
+        }
+
+        public void quit() {
+            try {
+                webDriver.quit();
+            } catch (Exception e) {
+                log.warn("关闭WebDriver时发生异常", e);
+            }
+        }
     }
 
     /**
@@ -59,31 +104,124 @@ public class WebScreenshotUtils {
             log.error("网页URL不能为空");
             return null;
         }
+
+        WebDriverWrapper driverWrapper = null;
         try {
-            //创建临时目录
+            // 从连接池获取WebDriver
+            driverWrapper = borrowWebDriver();
+
+            // 创建临时目录
             String rootPath = AppConstant.SCREENSHOT_ROOT_DIR + File.separator + UUID.randomUUID().toString().substring(0, 8);
             FileUtil.mkdir(rootPath);
+
             // 原始截图文件路径
             String originalImagePath = rootPath + File.separator + String.format("%s_original", RandomUtil.randomNumbers(5)) + IMAGE_SUFFIX;
+
             // 访问网页
-            WEB_DRIVER.get(webUrl);
+            driverWrapper.getWebDriver().get(webUrl);
+
             // 等待页面加载完成
-            waitForPageLoad(WEB_DRIVER);
+            waitForPageLoad(driverWrapper.getWebDriver());
+
             // 截图
-            byte[] screenshotBytes = ((TakesScreenshot) WEB_DRIVER).getScreenshotAs(OutputType.BYTES);
+            byte[] screenshotBytes = ((TakesScreenshot) driverWrapper.getWebDriver()).getScreenshotAs(OutputType.BYTES);
+
             // 保存原始图片
             saveImage(screenshotBytes, originalImagePath);
             log.info("原始截图保存成功: {}", originalImagePath);
+
             // 压缩图片
             String compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESSION_SUFFIX;
             compressImage(originalImagePath, compressedImagePath);
             log.info("压缩图片保存成功: {}", compressedImagePath);
+
             // 删除原始图片，只保留压缩图片
             FileUtil.del(originalImagePath);
             return compressedImagePath;
         } catch (Exception e) {
             log.error("网页截图失败: {}", webUrl, e);
             return null;
+        } finally {
+            // 归还WebDriver到连接池
+            if (driverWrapper != null) {
+                returnWebDriver(driverWrapper);
+            }
+        }
+    }
+
+    /**
+     * 从连接池获取WebDriver
+     *
+     * @return WebDriverWrapper
+     * @throws Exception
+     */
+    private static WebDriverWrapper borrowWebDriver() throws Exception {
+        WebDriverWrapper driverWrapper = WEB_DRIVER_POOL.poll();
+
+        // 如果连接池为空且未达到最大连接数，则创建新的WebDriver
+        if (driverWrapper == null && POOL_SIZE.get() < MAX_POOL_SIZE) {
+            synchronized (WebScreenshotUtilsPooled.class) {
+                if (POOL_SIZE.get() < MAX_POOL_SIZE) {
+                    WebDriver webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+                    driverWrapper = new WebDriverWrapper(webDriver);
+                    POOL_SIZE.incrementAndGet();
+                    log.debug("创建新的WebDriver实例，当前池大小: {}", POOL_SIZE.get());
+                }
+            }
+        }
+
+        // 如果仍然为空，则阻塞等待
+        if (driverWrapper == null) {
+            driverWrapper = WEB_DRIVER_POOL.take();
+        }
+
+        // 检查WebDriver是否过期
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - driverWrapper.getLastUseTime() > KEEP_ALIVE_TIME) {
+            // 过期则销毁并创建新的
+            driverWrapper.quit();
+            POOL_SIZE.decrementAndGet();
+            WebDriver webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            driverWrapper = new WebDriverWrapper(webDriver);
+            POOL_SIZE.incrementAndGet();
+            log.debug("替换过期WebDriver实例");
+        }
+
+        return driverWrapper;
+    }
+
+    /**
+     * 归还WebDriver到连接池
+     *
+     * @param driverWrapper WebDriver包装类
+     */
+    private static void returnWebDriver(WebDriverWrapper driverWrapper) {
+        if (driverWrapper != null) {
+            // 清理浏览器状态（如cookies等）
+            try {
+                driverWrapper.getWebDriver().manage().deleteAllCookies();
+            } catch (Exception e) {
+                log.warn("清理WebDriver状态时发生异常", e);
+            }
+
+            // 尝试归还到连接池
+            if (!WEB_DRIVER_POOL.offer(driverWrapper)) {
+                // 如果连接池已满，则销毁多余的WebDriver
+                if (POOL_SIZE.get() > MIN_POOL_SIZE) {
+                    driverWrapper.quit();
+                    POOL_SIZE.decrementAndGet();
+                    log.debug("销毁多余的WebDriver实例，当前池大小: {}", POOL_SIZE.get());
+                } else {
+                    // 否则尝试强制放入（可能会阻塞）
+                    try {
+                        WEB_DRIVER_POOL.offer(driverWrapper, 5, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        driverWrapper.quit();
+                        POOL_SIZE.decrementAndGet();
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
         }
     }
 
@@ -136,14 +274,19 @@ public class WebScreenshotUtils {
     }
 
     /**
-     * 销毁 Chrome 浏览器驱动
+     * 关闭连接池，释放所有资源
      */
-    @PreDestroy
-    public void onApplicationShutdown() {
-        if (WEB_DRIVER != null) {
-            log.info("Shutting down Chrome driver...");
-            WEB_DRIVER.quit();
+    public static void shutdown() {
+        running = false;
+        int size = POOL_SIZE.get();
+        for (int i = 0; i < size; i++) {
+            WebDriverWrapper driverWrapper = WEB_DRIVER_POOL.poll();
+            if (driverWrapper != null) {
+                driverWrapper.quit();
+            }
         }
+        POOL_SIZE.set(0);
+        log.info("WebDriver连接池已关闭");
     }
 
     /**
@@ -187,7 +330,7 @@ public class WebScreenshotUtils {
      * 压缩图片
      */
     private static void compressImage(String originalImagePath, String compressedImagePath) {
-        // 压缩图片质量（0.1 = 10% 质量）
+        // 压缩图片质量（0.3 = 30% 质量）
         final float compressionQuality = 0.3f;
         compressImage(originalImagePath, compressedImagePath, compressionQuality);
     }
@@ -224,7 +367,6 @@ public class WebScreenshotUtils {
             log.error("初始化 Chrome 浏览器失败", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 Chrome 浏览器失败");
         }
-
     }
 
     /**
@@ -241,7 +383,7 @@ public class WebScreenshotUtils {
         // 禁用开发者shm使用
         chromeOptions.addArguments("--disable-dev-shm-usage");
         // 设置窗口大小
-        chromeOptions.addArguments(java.lang.String.format("--window-size=%d,%d", width, height));
+        chromeOptions.addArguments(String.format("--window-size=%d,%d", width, height));
         // 禁用扩展
         chromeOptions.addArguments("--disable-extensions");
         // 设置用户代理

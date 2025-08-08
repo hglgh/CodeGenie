@@ -9,7 +9,6 @@ import com.hgl.codegeniebackend.common.constant.AppConstant;
 import com.hgl.codegeniebackend.common.exception.BusinessException;
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import io.github.bonigarcia.wdm.WebDriverManager;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
@@ -24,28 +23,53 @@ import java.time.Duration;
 import java.util.UUID;
 
 /**
- * ClassName: WebScreenshotUtils
+ * ClassName: WebScreenshotUtilsEnhanced
  *
  * @Package: com.hgl.codegeniebackend.ai.tools
  * @Description:
  * @Author HGL
- * @Create: 2025/8/7 15:00
+ * @Create: 2025/8/7 18:22
  */
 @Slf4j
-public class WebScreenshotUtils {
-    private static final WebDriver WEB_DRIVER;
+public class WebScreenshotUtilsEnhanced {
+    private static final int DEFAULT_WIDTH = 1600;
+    private static final int DEFAULT_HEIGHT = 900;
     // 图片后缀
     private static final String IMAGE_SUFFIX = ".png";
     // 压缩图片后缀
     private static final String COMPRESSION_SUFFIX = "_compressed.jpg";
 
-    /*
-     * 静态初始化 Chrome 浏览器驱动
+    private static final ThreadLocal<WebDriver> DRIVER_THREAD_LOCAL = new ThreadLocal<>();
+
+    /**
+     * 获取当前线程的WebDriver实例
+     * 如果不存在则创建新的实例
+     *
+     * @return WebDriver实例
      */
-    static {
-        final int defaultWidth = 1600;
-        final int defaultHeight = 900;
-        WEB_DRIVER = initChromeDriver(defaultWidth, defaultHeight);
+    private static WebDriver getDriver() {
+        WebDriver driver = DRIVER_THREAD_LOCAL.get();
+        if (driver == null) {
+            driver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            DRIVER_THREAD_LOCAL.set(driver);
+        }
+        return driver;
+    }
+
+    /**
+     * 清理当前线程的WebDriver资源
+     */
+    private static void cleanupDriver() {
+        WebDriver driver = DRIVER_THREAD_LOCAL.get();
+        if (driver != null) {
+            try {
+                driver.quit();
+            } catch (Exception e) {
+                log.warn("关闭WebDriver时发生异常", e);
+            } finally {
+                DRIVER_THREAD_LOCAL.remove();
+            }
+        }
     }
 
     /**
@@ -59,31 +83,46 @@ public class WebScreenshotUtils {
             log.error("网页URL不能为空");
             return null;
         }
+
+        WebDriver webDriver;
         try {
+            // 获取当前线程的WebDriver实例
+            webDriver = getDriver();
+
             //创建临时目录
             String rootPath = AppConstant.SCREENSHOT_ROOT_DIR + File.separator + UUID.randomUUID().toString().substring(0, 8);
             FileUtil.mkdir(rootPath);
+
             // 原始截图文件路径
             String originalImagePath = rootPath + File.separator + String.format("%s_original", RandomUtil.randomNumbers(5)) + IMAGE_SUFFIX;
+
             // 访问网页
-            WEB_DRIVER.get(webUrl);
+            webDriver.get(webUrl);
+
             // 等待页面加载完成
-            waitForPageLoad(WEB_DRIVER);
+            waitForPageLoad(webDriver);
+
             // 截图
-            byte[] screenshotBytes = ((TakesScreenshot) WEB_DRIVER).getScreenshotAs(OutputType.BYTES);
+            byte[] screenshotBytes = ((TakesScreenshot) webDriver).getScreenshotAs(OutputType.BYTES);
+
             // 保存原始图片
             saveImage(screenshotBytes, originalImagePath);
             log.info("原始截图保存成功: {}", originalImagePath);
+
             // 压缩图片
             String compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESSION_SUFFIX;
             compressImage(originalImagePath, compressedImagePath);
             log.info("压缩图片保存成功: {}", compressedImagePath);
+
             // 删除原始图片，只保留压缩图片
             FileUtil.del(originalImagePath);
             return compressedImagePath;
         } catch (Exception e) {
             log.error("网页截图失败: {}", webUrl, e);
             return null;
+        } finally {
+            // 清理当前线程的WebDriver资源
+            cleanupDriver();
         }
     }
 
@@ -136,17 +175,6 @@ public class WebScreenshotUtils {
     }
 
     /**
-     * 销毁 Chrome 浏览器驱动
-     */
-    @PreDestroy
-    public void onApplicationShutdown() {
-        if (WEB_DRIVER != null) {
-            log.info("Shutting down Chrome driver...");
-            WEB_DRIVER.quit();
-        }
-    }
-
-    /**
      * 等待页面加载完成
      */
     private static void waitForPageLoad(WebDriver driver) {
@@ -187,7 +215,7 @@ public class WebScreenshotUtils {
      * 压缩图片
      */
     private static void compressImage(String originalImagePath, String compressedImagePath) {
-        // 压缩图片质量（0.1 = 10% 质量）
+        // 压缩图片质量（0.3 = 30% 质量）
         final float compressionQuality = 0.3f;
         compressImage(originalImagePath, compressedImagePath, compressionQuality);
     }
@@ -224,7 +252,6 @@ public class WebScreenshotUtils {
             log.error("初始化 Chrome 浏览器失败", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 Chrome 浏览器失败");
         }
-
     }
 
     /**
@@ -241,7 +268,7 @@ public class WebScreenshotUtils {
         // 禁用开发者shm使用
         chromeOptions.addArguments("--disable-dev-shm-usage");
         // 设置窗口大小
-        chromeOptions.addArguments(java.lang.String.format("--window-size=%d,%d", width, height));
+        chromeOptions.addArguments(String.format("--window-size=%d,%d", width, height));
         // 禁用扩展
         chromeOptions.addArguments("--disable-extensions");
         // 设置用户代理

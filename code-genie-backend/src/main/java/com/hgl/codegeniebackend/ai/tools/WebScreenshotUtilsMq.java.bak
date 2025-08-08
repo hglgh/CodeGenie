@@ -1,0 +1,287 @@
+package com.hgl.codegeniebackend.ai.tools;
+
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
+import com.hgl.codegeniebackend.common.constant.AppConstant;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * 基于消息队列的网页截图工具类
+ * 通过消息队列处理截图请求，防止高并发场景下系统过载
+ *
+ * @Author HGL
+ * @Create 2025/8/8
+ */
+@Slf4j
+@Component
+@ConditionalOnProperty(name = "screenshot.mq.enabled", havingValue = "true", matchIfMissing = false)
+public class WebScreenshotUtilsMq {
+
+    // 注入RabbitTemplate
+    @Autowired(required = false)
+    private RabbitTemplate rabbitTemplate;
+
+    // 存储请求ID与结果的映射关系
+    private static final ConcurrentHashMap<String, ScreenshotResult> RESULT_MAP = new ConcurrentHashMap<>();
+
+    // 消息队列配置
+    private static final String SCREENSHOT_QUEUE = "screenshot.queue";
+    private static final String SCREENSHOT_EXCHANGE = "screenshot.exchange";
+    private static final String SCREENSHOT_ROUTING_KEY = "screenshot.routing.key";
+
+    /**
+     * 截图结果类
+     */
+    public static class ScreenshotResult {
+        private String imagePath;
+        private String errorMsg;
+        private boolean completed = false;
+
+        public String getImagePath() {
+            return imagePath;
+        }
+
+        public void setImagePath(String imagePath) {
+            this.imagePath = imagePath;
+        }
+
+        public String getErrorMsg() {
+            return errorMsg;
+        }
+
+        public void setErrorMsg(String errorMsg) {
+            this.errorMsg = errorMsg;
+        }
+
+        public boolean isCompleted() {
+            return completed;
+        }
+
+        public void setCompleted(boolean completed) {
+            this.completed = completed;
+        }
+    }
+
+    /**
+     * 异步生成网页截图
+     *
+     * @param webUrl 网页URL
+     * @return 截图请求ID，可用于查询结果
+     */
+    public static String requestWebPageScreenshot(String webUrl) {
+        if (StrUtil.isBlank(webUrl)) {
+            log.error("网页URL不能为空");
+            return null;
+        }
+
+        // 生成请求ID
+        String requestId = UUID.randomUUID().toString();
+
+        // 创建结果占位符
+        RESULT_MAP.put(requestId, new ScreenshotResult());
+
+        // 发送消息到队列
+        ScreenshotRequest request = new ScreenshotRequest();
+        request.setRequestId(requestId);
+        request.setWebUrl(webUrl);
+
+        // 发送到消息队列
+        // 注意：在实际使用中需要注入RabbitTemplate并发送消息
+        // rabbitTemplate.convertAndSend(SCREENSHOT_EXCHANGE, SCREENSHOT_ROUTING_KEY, request);
+
+        log.info("已提交截图请求，请求ID: {}", requestId);
+        return requestId;
+    }
+
+    /**
+     * 查询截图结果
+     *
+     * @param requestId 请求ID
+     * @return 截图结果，如果未完成返回null
+     */
+    public static ScreenshotResult getScreenshotResult(String requestId) {
+        return RESULT_MAP.get(requestId);
+    }
+
+    /**
+     * 截图请求消息体
+     */
+    public static class ScreenshotRequest {
+        private String requestId;
+        private String webUrl;
+
+        public String getRequestId() {
+            return requestId;
+        }
+
+        public void setRequestId(String requestId) {
+            this.requestId = requestId;
+        }
+
+        public String getWebUrl() {
+            return webUrl;
+        }
+
+        public void setWebUrl(String webUrl) {
+            this.webUrl = webUrl;
+        }
+    }
+
+    /**
+     * 消息队列消费者
+     */
+    @Component
+    @ConditionalOnBean(RabbitTemplate.class)
+    public static class ScreenshotConsumer {
+
+        @Autowired
+        private RabbitTemplate rabbitTemplate;
+
+        /**
+         * 处理截图请求
+         *
+         * @param request 截图请求
+         */
+        @RabbitListener(queues = SCREENSHOT_QUEUE)
+        public void handleScreenshotRequest(ScreenshotRequest request) {
+            String requestId = request.getRequestId();
+            String webUrl = request.getWebUrl();
+            log.info("开始处理截图请求，请求ID: {}, URL: {}", requestId, webUrl);
+
+            ScreenshotResult result = RESULT_MAP.get(requestId);
+            if (result == null) {
+                log.warn("未找到截图请求结果占位符，请求ID: {}", requestId);
+                return;
+            }
+
+            try {
+                // 使用连接池方式生成截图
+                String imagePath = WebScreenshotUtilsPooled.saveWebPageScreenshot(webUrl);
+                if (imagePath != null) {
+                    result.setImagePath(imagePath);
+                } else {
+                    result.setErrorMsg("截图失败");
+                }
+            } catch (Exception e) {
+                log.error("处理截图请求时发生异常，请求ID: {}", requestId, e);
+                result.setErrorMsg("处理截图请求时发生异常: " + e.getMessage());
+            } finally {
+                result.setCompleted(true);
+                RESULT_MAP.put(requestId, result);
+                log.info("截图请求处理完成，请求ID: {}", requestId);
+            }
+        }
+    }
+
+    /**
+     * 异步获取截图结果
+     *
+     * @param requestId 请求ID
+     * @return CompletableFuture<String> 截图文件路径
+     */
+    public static CompletableFuture<String> getScreenshotAsync(String requestId) {
+        return CompletableFuture.supplyAsync(() -> {
+            ScreenshotResult result = RESULT_MAP.get(requestId);
+            if (result == null) {
+                return null;
+            }
+
+            // 等待结果完成，最多等待30秒
+            int count = 0;
+            while (!result.isCompleted() && count < 300) { // 30秒超时
+                try {
+                    Thread.sleep(100);
+                    result = RESULT_MAP.get(requestId);
+                    count++;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
+
+            if (result.isCompleted()) {
+                if (result.getErrorMsg() != null) {
+                    throw new RuntimeException(result.getErrorMsg());
+                }
+                return result.getImagePath();
+            } else {
+                throw new RuntimeException("截图请求超时");
+            }
+        });
+    }
+
+    /**
+     * 清理临时文件
+     */
+    public static void cleanupTempFiles() {
+        // 获取截图根目录
+        File screenshotDir = new File(AppConstant.SCREENSHOT_ROOT_DIR);
+
+        // 检查目录是否存在
+        if (!screenshotDir.exists() || !screenshotDir.isDirectory()) {
+            log.info("截图目录不存在: {}", screenshotDir.getAbsolutePath());
+            return;
+        }
+
+        // 获取当前时间
+        long currentTime = System.currentTimeMillis();
+        // 设置过期时间（24小时）
+        long expireTime = 24 * 60 * 60 * 1000L;
+
+        // 遍历目录中的所有子目录
+        File[] subDirs = screenshotDir.listFiles(File::isDirectory);
+        if (subDirs == null) {
+            log.info("截图目录中没有子目录");
+            return;
+        }
+
+        int deletedCount = 0;
+        for (File subDir : subDirs) {
+            // 检查目录的最后修改时间
+            long lastModified = subDir.lastModified();
+            if (currentTime - lastModified > expireTime) {
+                // 删除过期的目录
+                try {
+                    boolean deleted = FileUtil.del(subDir);
+                    if (deleted) {
+                        deletedCount++;
+                        log.info("已删除过期截图目录: {}", subDir.getAbsolutePath());
+                    } else {
+                        log.warn("删除过期截图目录失败: {}", subDir.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    log.error("删除过期截图目录时发生异常: {}", subDir.getAbsolutePath(), e);
+                }
+            }
+        }
+
+        log.info("清理完成，共删除 {} 个过期截图目录", deletedCount);
+    }
+
+    /**
+     * 清理已完成的请求结果
+     */
+    public static void cleanupCompletedRequests() {
+        int cleanedCount = 0;
+        for (String requestId : RESULT_MAP.keySet()) {
+            ScreenshotResult result = RESULT_MAP.get(requestId);
+            if (result != null && result.isCompleted()) {
+                RESULT_MAP.remove(requestId);
+                cleanedCount++;
+            }
+        }
+        log.info("清理完成，共删除 {} 个已完成的请求结果", cleanedCount);
+    }
+}
