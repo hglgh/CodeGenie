@@ -12,6 +12,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.hgl.codegeniebackend.common.model.entity.App;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -126,4 +127,13 @@ public interface AppService extends IService<App> {
      * @return 应用分页
      */
     Page<AppVO> listAppVoByPageByAdmin(AppQueryRequest appQueryRequest);
+
+    /**
+     * 下载应用代码
+     *
+     * @param appId    应用ID
+     * @param request  请求
+     * @param response 响应
+     */
+    void downloadAppCode(Long appId, HttpServletRequest request, HttpServletResponse response);
 }

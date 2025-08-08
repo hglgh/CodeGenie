@@ -14,10 +14,12 @@ import com.hgl.codegeniebackend.common.model.entity.User;
 import com.hgl.codegeniebackend.common.model.request.app.*;
 import com.hgl.codegeniebackend.common.model.vo.app.AppVO;
 import com.hgl.codegeniebackend.service.AppService;
+import com.hgl.codegeniebackend.service.ProjectDownloadService;
 import com.hgl.codegeniebackend.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -86,6 +88,20 @@ public class AppController {
         // 调用服务部署应用
         String deployUrl = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deployUrl);
+    }
+
+    /**
+     * 下载应用代码
+     *
+     * @param appId    应用ID
+     * @param request  请求
+     * @param response 响应
+     */
+    @GetMapping("/download/{appId}")
+    public void downloadAppCode(@PathVariable Long appId, HttpServletRequest request, HttpServletResponse response){
+        // 1. 基础校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
+        appService.downloadAppCode(appId, request, response);
     }
 
 

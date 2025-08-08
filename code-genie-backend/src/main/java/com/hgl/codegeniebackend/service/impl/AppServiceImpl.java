@@ -6,6 +6,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.hgl.codegeniebackend.ai.AiCodeGenTypeRoutingService;
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
 import com.hgl.codegeniebackend.common.DeleteRequest;
 import com.hgl.codegeniebackend.common.constant.AppConstant;
@@ -26,15 +27,13 @@ import com.hgl.codegeniebackend.core.AiCodeGeneratorFacadeEnhanced;
 import com.hgl.codegeniebackend.core.builder.VueProjectBuilder;
 import com.hgl.codegeniebackend.core.handler.StreamHandlerExecutor;
 import com.hgl.codegeniebackend.mapper.AppMapper;
-import com.hgl.codegeniebackend.service.AppService;
-import com.hgl.codegeniebackend.service.ChatHistoryService;
-import com.hgl.codegeniebackend.service.ScreenshotService;
-import com.hgl.codegeniebackend.service.UserService;
+import com.hgl.codegeniebackend.service.*;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,6 +75,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ScreenshotService screenshotService;
+
+    @Resource
+    private ProjectDownloadService projectDownloadService;
+
+    @Resource
+    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -157,15 +162,18 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Override
     public long addApp(AppAddRequest appAddRequest, HttpServletRequest request) {
+        // 参数校验
         String initPrompt = appAddRequest.getInitPrompt();
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化提示不能为空");
         User loginUser = userService.getLoginUser(request);
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        // 构造入库对象
+        // 使用 AI 智能选择代码生成类型
+        CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
         App app = App.builder()
                 .appName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)))
                 .initPrompt(initPrompt)
-                // 暂时设置为 VUE 工程生成
-                .codeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue())
+                .codeGenType(selectedCodeGenType.getValue())
                 .priority(AppConstant.DEFAULT_APP_PRIORITY)
                 .userId(loginUser.getId()).build();
         boolean save = this.save(app);
@@ -347,6 +355,29 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         int pageNum = appQueryRequest.getPageNum();
         Page<App> page = new Page<>(pageNum, pageSize);
         return getAppVoPage(appQueryRequest, pageSize, pageNum, page);
+    }
+
+    @Override
+    public void downloadAppCode(Long appId, HttpServletRequest request, HttpServletResponse response) {
+        // 2. 查询应用信息
+        App app = this.mapper.selectOneById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 3. 权限校验：只有应用创建者可以下载代码
+        User loginUser = userService.getLoginUser(request);
+        if (!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限下载该应用代码");
+        }
+        // 4. 构建应用代码目录路径（生成目录，非部署目录）
+        String codeGenType = app.getCodeGenType();
+        String sourceDirName = codeGenType + "_" + appId;
+        String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
+        // 5. 检查代码目录是否存在
+        ThrowUtils.throwIf(!FileUtil.exist(sourceDirPath) && !FileUtil.isDirectory(sourceDirPath),
+                ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成代码");
+        // 6. 生成下载文件名（不建议添加中文内容）
+        String downloadFileName = String.valueOf(appId);
+        // 7. 调用通用下载服务
+        projectDownloadService.downloadProjectAsZip(sourceDirPath, downloadFileName, response);
     }
 
     /**
