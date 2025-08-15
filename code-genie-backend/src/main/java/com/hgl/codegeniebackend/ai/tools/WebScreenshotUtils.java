@@ -48,6 +48,9 @@ public class WebScreenshotUtils {
         WEB_DRIVER = initChromeDriver(defaultWidth, defaultHeight);
     }
 
+    private WebScreenshotUtils() {
+    }
+
     /**
      * 生成网页截图
      *

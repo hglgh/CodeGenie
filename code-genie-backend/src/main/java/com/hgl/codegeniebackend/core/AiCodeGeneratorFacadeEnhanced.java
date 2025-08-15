@@ -138,9 +138,7 @@ public class AiCodeGeneratorFacadeEnhanced {
         }).onToolExecuted(toolExecution -> {
             ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
             sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
-        }).onCompleteResponse(chatResponse -> {
-            sink.complete();
-        }).onError(throwable -> {
+        }).onCompleteResponse(chatResponse -> sink.complete()).onError(throwable -> {
             log.error("processTokenStream方法 Error: ", throwable);
             sink.error(throwable);
         }).start());

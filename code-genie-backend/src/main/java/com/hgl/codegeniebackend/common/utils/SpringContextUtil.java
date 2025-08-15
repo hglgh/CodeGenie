@@ -1,0 +1,45 @@
+package com.hgl.codegeniebackend.common.utils;
+
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Component;
+
+/**
+ * @ClassName: SpringContextUtil
+ * @Package: com.hgl.codegeniebackend.common.tools
+ * @Description: Spring上下文工具类 用于在静态方法中获取Spring Bean
+ * @Author HGL
+ * @Create: 2025/8/15 9:10
+ */
+@Component
+public class SpringContextUtil implements ApplicationContextAware {
+    private static ApplicationContext applicationContext;
+
+    @Override
+    public void setApplicationContext(@NotNull ApplicationContext applicationContext) throws BeansException {
+        SpringContextUtil.applicationContext = applicationContext;
+    }
+
+    /**
+     * 获取Spring Bean
+     */
+    public static <T> T getBean(Class<T> clazz) {
+        return applicationContext.getBean(clazz);
+    }
+
+    /**
+     * 获取Spring Bean
+     */
+    public static Object getBean(String name) {
+        return applicationContext.getBean(name);
+    }
+
+    /**
+     * 根据名称和类型获取Spring Bean
+     */
+    public static <T> T getBean(String name, Class<T> clazz) {
+        return applicationContext.getBean(name, clazz);
+    }
+}
