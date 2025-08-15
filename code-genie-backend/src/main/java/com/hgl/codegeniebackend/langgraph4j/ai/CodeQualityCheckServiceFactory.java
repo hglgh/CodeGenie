@@ -1,5 +1,6 @@
 package com.hgl.codegeniebackend.langgraph4j.ai;
 
+import com.hgl.codegeniebackend.common.utils.SpringContextUtil;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
@@ -18,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CodeQualityCheckServiceFactory {
 
-    @Resource
+    @Resource(name = "openAiChatModel")
     private ChatModel chatModel;
 
     /**
