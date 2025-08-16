@@ -2,6 +2,7 @@ package com.hgl.codegeniebackend.common;
 
 import com.hgl.codegeniebackend.common.exception.ErrorCode;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -15,6 +16,7 @@ import java.io.Serializable;
  * @Create: 2025/7/25 14:01
  */
 @Data
+@NoArgsConstructor
 public class BaseResponse<T> implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
