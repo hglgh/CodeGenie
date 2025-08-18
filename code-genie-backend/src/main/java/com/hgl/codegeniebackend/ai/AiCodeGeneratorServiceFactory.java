@@ -3,6 +3,8 @@ package com.hgl.codegeniebackend.ai;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hgl.codegeniebackend.ai.enums.CodeGenTypeEnum;
+import com.hgl.codegeniebackend.ai.guardrail.PromptSafetyInputGuardrail;
+import com.hgl.codegeniebackend.ai.guardrail.RetryOutputGuardrail;
 import com.hgl.codegeniebackend.ai.tools.FileWriteTool;
 import com.hgl.codegeniebackend.ai.tools.ToolManager;
 import com.hgl.codegeniebackend.common.exception.BusinessException;
@@ -11,6 +13,7 @@ import com.hgl.codegeniebackend.common.utils.SpringContextUtil;
 import com.hgl.codegeniebackend.service.ChatHistoryService;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -115,6 +118,14 @@ public class AiCodeGeneratorServiceFactory {
                         .streamingChatModel(reasoningStreamingChatModel)
                         .chatMemoryProvider(memoryId -> chatMemory)
                         .tools(toolManager.getAllTools())
+                        // 添加输入护轨
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        // 添加输出护轨,经过测试，如果用了输出护轨，可能会导致流式输出的响应不及时，等到 AI输出结束才一起返回，所以如果为了追求流式输出效果，建议不要通过护轨的方式进行重试。
+//                        .outputGuardrails(new RetryOutputGuardrail())
+                        // 添加输出护轨配置类来设置最大重试次数
+/*                        .outputGuardrailsConfig(OutputGuardrailsConfig.builder()
+                                .maxRetries(3)
+                                .build())*/
                         .hallucinatedToolNameStrategy(toolExecutionRequest ->
                                 ToolExecutionResultMessage.from(
                                         toolExecutionRequest,

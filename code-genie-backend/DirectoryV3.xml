@@ -19,4 +19,5 @@
     <tree path="/src/main/java/com/hgl/codegeniebackend/controller/StaticResourceController.java"
           title="部署方式二：写一个Controller"/>
     <tree path="/src/main/java/com/hgl/codegeniebackend/core/elegance" title="改写AI生成模式（策略模式）"/>
+    <tree path="/src/main/java/com/hgl/codegeniebackend/ai/guardrail" title="护轨"/>
 </trees>

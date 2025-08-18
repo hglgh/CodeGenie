@@ -37,7 +37,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
@@ -219,23 +218,32 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除应用失败");
         // 删除部署目录
         if (oldApp.getDeployKey() != null && !oldApp.getDeployKey().isEmpty()) {
-            String deployDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + oldApp.getDeployKey();
-            Thread.ofVirtual().name(String.format("delete-app-%s", System.currentTimeMillis())).start(() -> {
-                try {
-                    boolean existed = FileUtil.exist(deployDir);
-                    if (existed) {
-                        log.info("删除部署目录: {}", deployDir);
-                        boolean delled = FileUtil.del(deployDir);
-                        if (!delled) {
-                            log.error("删除部署目录失败: {}", deployDir);
-                        }
-                    }
-                } catch (IORuntimeException e) {
-                    log.error("删除部署目录时发生异常: {}", deployDir, e);
-                }
-            });
+            deleteAppDeploymentDirectory(oldApp);
         }
         return true;
+    }
+
+    /**
+     * 删除应用的部署目录
+     *
+     * @param app 应用对象
+     */
+    private void deleteAppDeploymentDirectory(App app) {
+        String deployDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + app.getDeployKey();
+        Thread.ofVirtual().name(String.format("delete-app-%s", System.currentTimeMillis())).start(() -> {
+            try {
+                boolean existed = FileUtil.exist(deployDir);
+                if (existed) {
+                    log.info("删除部署目录: {}", deployDir);
+                    boolean delled = FileUtil.del(deployDir);
+                    if (!delled) {
+                        log.error("删除部署目录失败: {}", deployDir);
+                    }
+                }
+            } catch (IORuntimeException e) {
+                log.error("删除部署目录时发生异常: {}", deployDir, e);
+            }
+        });
     }
 
     @Override
@@ -383,7 +391,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     /**
-     * 删除应用时关联删除对话历史(重新方法)
+     * 删除应用时关联删除对话历史(重写方法)
      *
      * @param id 应用ID
      * @return 是否成功
