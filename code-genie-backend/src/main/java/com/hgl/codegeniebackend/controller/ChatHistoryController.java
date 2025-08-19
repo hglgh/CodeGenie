@@ -76,4 +76,15 @@ public class ChatHistoryController {
         return ResultUtils.success(result);
     }
 
+    /**
+     * 删除对话历史
+     *
+     * @param id 对话历史ID
+     * @return 删除结果
+     */
+    @PostMapping("/admin/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> deleteChatHistory(@RequestBody Long id) {
+        return ResultUtils.success(chatHistoryService.removeById(id));
+    }
 }
