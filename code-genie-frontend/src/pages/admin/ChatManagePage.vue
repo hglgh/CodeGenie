@@ -69,7 +69,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { listAllChatHistoryByPageForAdmin } from '@/api/chatHistoryController'
+import { deleteChatHistory, listAllChatHistoryByPageForAdmin } from '@/api/chatHistoryController'
 import { formatTime } from '@/utils/time'
 
 const router = useRouter()
@@ -187,6 +187,7 @@ const deleteMessage = async (id: number | undefined) => {
     // 注意：这里需要后端提供删除对话历史的接口
     // 目前先显示成功，实际实现需要调用删除接口
     message.success('删除成功')
+    await deleteChatHistory(id)
     // 刷新数据
     fetchData()
   } catch (error) {

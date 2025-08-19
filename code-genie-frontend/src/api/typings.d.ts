@@ -143,6 +143,27 @@ declare namespace API {
     id?: number
   }
 
+  type DiagramTask = {
+    mermaidCode?: string
+    description?: string
+  }
+
+  type downloadAppCodeParams = {
+    appId: number
+  }
+
+  type executeWorkflowParams = {
+    prompt: string
+  }
+
+  type executeWorkflowWithFluxParams = {
+    prompt: string
+  }
+
+  type executeWorkflowWithSseParams = {
+    prompt: string
+  }
+
   type getAppVoByIdByAdminParams = {
     id: number
   }
@@ -157,6 +178,27 @@ declare namespace API {
 
   type getUserVoByIdParams = {
     id: number
+  }
+
+  type IllustrationTask = {
+    query?: string
+  }
+
+  type ImageCollectionPlan = {
+    contentImageTasks?: ImageSearchTask[]
+    illustrationTasks?: IllustrationTask[]
+    diagramTasks?: DiagramTask[]
+    logoTasks?: LogoTask[]
+  }
+
+  type ImageResource = {
+    category?: 'CONTENT' | 'LOGO' | 'ILLUSTRATION' | 'ARCHITECTURE'
+    description?: string
+    url?: string
+  }
+
+  type ImageSearchTask = {
+    query?: string
   }
 
   type listAppChatHistoryParams = {
@@ -174,6 +216,10 @@ declare namespace API {
     userRole?: string
     createTime?: string
     updateTime?: string
+  }
+
+  type LogoTask = {
+    description?: string
   }
 
   type PageAppVO = {
@@ -203,10 +249,20 @@ declare namespace API {
     optimizeCountQuery?: boolean
   }
 
+  type QualityResult = {
+    isValid?: boolean
+    errors?: string[]
+    suggestions?: string[]
+  }
+
   type ServerSentEventString = true
 
   type serveStaticResourceParams = {
     deployKey: string
+  }
+
+  type SseEmitter = {
+    timeout?: number
   }
 
   type User = {
@@ -270,5 +326,23 @@ declare namespace API {
     userProfile?: string
     userRole?: string
     createTime?: string
+  }
+
+  type WorkflowContext = {
+    currentStep?: string
+    originalPrompt?: string
+    imageListStr?: string
+    imageList?: ImageResource[]
+    enhancedPrompt?: string
+    generationType?: 'HTML' | 'MULTI_FILE' | 'VUE_PROJECT'
+    generatedCodeDir?: string
+    buildResultDir?: string
+    errorMessage?: string
+    qualityResult?: QualityResult
+    imageCollectionPlan?: ImageCollectionPlan
+    contentImages?: ImageResource[]
+    illustrations?: ImageResource[]
+    diagrams?: ImageResource[]
+    logos?: ImageResource[]
   }
 }
