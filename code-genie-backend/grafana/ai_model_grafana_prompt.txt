@@ -1,0 +1,29 @@
+帮我根据分析需求、数据上报相关代码、示例从 Prometheus 收集到的数据，来生成 Grafana 看板的 JSON 导入代码，全部汇总到一个看板中。
+
+相关的规范参考：https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/view-dashboard-json-model/
+
+## 需求
+
+// ... 补充分析需求
+
+## 数据上报相关代码
+
+// ... 补充 AiModelMetricsCollector.java 的代码
+
+## 示例收集到的数据
+
+HELP ai_model_requests_total AI模型总请求次数
+TYPE ai_model_requests_total counter
+ai_model_requests_total{app_id="313129227198590976",model_name="deepseek-chat",status="started",user_id="302588523967918080"} 2.0
+ai_model_requests_total{app_id="313129227198590976",model_name="deepseek-chat",status="success",user_id="302588523967918080"} 2.0
+
+HELP ai_model_response_duration_seconds AI模型响应时间
+TYPE ai_model_response_duration_seconds summary
+ai_model_response_duration_seconds_count{app_id="313129227198590976",model_name="deepseek-chat",user_id="302588523967918080"} 2
+ai_model_response_duration_seconds_sum{app_id="313129227198590976",model_name="deepseek-chat",user_id="302588523967918080"} 91.285863
+
+HELP ai_model_tokens_total AI模型Token消耗总数
+TYPE ai_model_tokens_total counter
+ai_model_tokens_total{app_id="313129227198590976",model_name="deepseek-chat",token_type="input",user_id="302588523967918080"} 1321.0
+ai_model_tokens_total{app_id="313129227198590976",model_name="deepseek-chat",token_type="output",user_id="302588523967918080"} 519.0
+ai_model_tokens_total{app_id="313129227198590976",model_name="deepseek-chat",token_type="total",user_id="302588523967918080"} 1840.0
