@@ -1,5 +1,6 @@
 package com.hgl.codegenie;
 
+import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
  * @Author HGL
  * @Create: 2025/8/27 17:08
  */
+@EnableDubbo
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
 public class CodeGenieScreenshotApplication {
     public static void main(String[] args) {

@@ -8,6 +8,7 @@ import com.hgl.codegenie.ratelimiter.annotation.RateLimit;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -37,8 +38,8 @@ public class RateLimitAspect {
 
     @Resource
     private RedissonClient redissonClient;
-    @Resource
-    @Lazy
+
+    @DubboReference
     private InnerUserService userService;
 
     @Before("@annotation(rateLimit)")
