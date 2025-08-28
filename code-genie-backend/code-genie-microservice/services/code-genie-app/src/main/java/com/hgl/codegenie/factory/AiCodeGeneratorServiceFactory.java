@@ -103,7 +103,7 @@ public class AiCodeGeneratorServiceFactory {
                 .build();
 
         // 从数据库中获取对话历史
-        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 50);
 
         //根据代码生成类型选择不同的模型配置
         return switch (codeGenType) {
