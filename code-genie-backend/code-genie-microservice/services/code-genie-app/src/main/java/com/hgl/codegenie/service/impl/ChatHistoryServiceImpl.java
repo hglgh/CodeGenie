@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 对话历史 服务层实现。
@@ -96,7 +97,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     }
 
     @Override
-    public boolean addChatMessage(Long appId, String message, String messageType, Long userId) {
+    public void addChatMessage(Long appId, String message, String messageType, Long userId) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "消息内容不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(messageType), ErrorCode.PARAMS_ERROR, "消息类型不能为空");
@@ -118,7 +119,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
                 .parentId(parentId)
                 .userId(userId)
                 .build();
-        return this.save(history);
+        this.save(history);
     }
 
     @Override
@@ -141,8 +142,9 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         Long appId = chatHistoryQueryRequest.getAppId();
         Long userId = chatHistoryQueryRequest.getUserId();
         LocalDateTime lastCreateTime = chatHistoryQueryRequest.getLastCreateTime();
-        String sortField = chatHistoryQueryRequest.getSortField();
-        String sortOrder = chatHistoryQueryRequest.getSortOrder();
+        String sortField = chatHistoryQueryRequest.getSafeSortField(
+                Set.of("id", "createTime", "updateTime"));
+        boolean ascending = chatHistoryQueryRequest.isAscending();
         // 拼接查询条件
         queryWrapper.eq("id", id)
                 .like("message", message)
@@ -157,7 +159,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
         // 排序
         if (StrUtil.isNotBlank(sortField)) {
-            queryWrapper.orderBy(sortField, "ascend".equals(sortOrder));
+            queryWrapper.orderBy(sortField, ascending);
         } else {
             // 默认按创建时间降序排列
             queryWrapper.orderBy("createTime", false);

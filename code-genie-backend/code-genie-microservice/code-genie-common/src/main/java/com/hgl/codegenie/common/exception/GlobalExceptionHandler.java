@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 /**
@@ -48,6 +50,15 @@ public class GlobalExceptionHandler {
             return null;
         }
         return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public BaseResponse<?> validationExceptionHandler(MethodArgumentNotValidException e) {
+        String msg = e.getBindingResult().getFieldErrors().stream()
+                .map(f -> f.getField() + ": " + f.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        log.warn("参数校验失败: {}", msg);
+        return ResultUtils.error(ErrorCode.PARAMS_ERROR.getCode(), msg);
     }
 
     /**

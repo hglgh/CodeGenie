@@ -59,24 +59,30 @@ public class LogoGeneratorTool {
                     .build();
             ImageSynthesis imageSynthesis = new ImageSynthesis();
             ImageSynthesisResult result = imageSynthesis.call(param);
+
             if (result != null && result.getOutput() != null && result.getOutput().getResults() != null) {
-                List<Map<String, String>> results = result.getOutput().getResults();
-                for (Map<String, String> imageResult : results) {
+                for (Map<String, String> imageResult : result.getOutput().getResults()) {
                     String imageUrl = imageResult.get("url");
                     if (StrUtil.isNotBlank(imageUrl)) {
                         // 下载图片到临时文件
                         File tempFile = FileUtil.createTempFile("image_", ".jpg", true);
                         try (HttpResponse response = HttpRequest.get(imageUrl).execute()) {
                             FileUtil.writeFromStream(response.bodyStream(), tempFile);
-                            //上创到 cos
+
+                            // 上传到 COS
                             String keyName = String.format("/logo/%s/%s", RandomUtil.randomString(5), tempFile.getName());
                             String cosUrl = cosManager.uploadFile(keyName, tempFile);
-                            FileUtil.del(tempFile);
+
                             logoList.add(ImageResource.builder()
                                     .category(ImageCategoryEnum.LOGO)
                                     .description(description)
                                     .url(cosUrl)
                                     .build());
+                        } finally {
+                            // 确保临时文件被删除
+                            if (tempFile.exists()) {
+                                FileUtil.del(tempFile);
+                            }
                         }
                     }
                 }

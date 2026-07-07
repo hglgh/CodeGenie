@@ -212,8 +212,11 @@ public class WebScreenshotUtils {
      */
     private static WebDriver initChromeDriver(int width, int height) {
         try {
-            // 自动管理 ChromeDriver
-            WebDriverManager.chromedriver().setup();
+            // 自动管理 ChromeDriver，指定驱动下载缓存目录
+            WebDriverManager.chromedriver()
+                    .cachePath(AppConstant.CHROME_DRIVER_CACHE_DIR)
+                    .setup();
+            log.info("ChromeDriver 缓存目录: {}", AppConstant.CHROME_DRIVER_CACHE_DIR);
             // 配置 Chrome 选项
             ChromeOptions chromeOptions = getChromeOptions(width, height);
             // 创建驱动

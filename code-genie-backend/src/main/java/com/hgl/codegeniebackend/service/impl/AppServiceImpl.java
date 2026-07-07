@@ -3,7 +3,6 @@ package com.hgl.codegeniebackend.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.hgl.codegeniebackend.ai.AiCodeGenTypeRoutingService;
@@ -27,6 +26,8 @@ import com.hgl.codegeniebackend.common.model.vo.user.UserVO;
 import com.hgl.codegeniebackend.core.AiCodeGeneratorFacadeEnhanced;
 import com.hgl.codegeniebackend.core.builder.VueProjectBuilder;
 import com.hgl.codegeniebackend.core.handler.StreamHandlerExecutor;
+import com.hgl.codegeniebackend.event.AppDeletedEvent;
+import com.hgl.codegeniebackend.event.AppDeployedEvent;
 import com.hgl.codegeniebackend.mapper.AppMapper;
 import com.hgl.codegeniebackend.monitor.MonitorContext;
 import com.hgl.codegeniebackend.monitor.MonitorContextHolder;
@@ -38,6 +39,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -76,7 +78,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
 
     @Resource
-    private ScreenshotService screenshotService;
+    private ApplicationEventPublisher eventPublisher;
 
     @Resource
     private ProjectDownloadService projectDownloadService;
@@ -110,7 +112,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Flux<String> contentFlux = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 8. 收集AI响应内容并在完成后记录到对话历史
         return streamHandlerExecutor
-                .doExecute(contentFlux, chatHistoryService, appId, loginUser, codeGenTypeEnum)
+                .doExecute(contentFlux, appId, loginUser.getId(), codeGenTypeEnum)
                 .doFinally(signalType -> {
                     // 流结束时清理（无论成功/失败/取消）
                     MonitorContextHolder.clearContext();
@@ -168,8 +170,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
         // 10. 构建应用访问 URL
         String appDeployUrl = String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
-        // 11. 异步生成截图并更新应用封面
-        generateAppScreenshotAsync(appId, appDeployUrl);
+        // 11. 发布部署完成事件（异步截图）
+        eventPublisher.publishEvent(new AppDeployedEvent(appId, appDeployUrl));
         return appDeployUrl;
 
     }
@@ -230,34 +232,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(!oldApp.getUserId().equals(loginUser.getId()) && !UserConstant.ADMIN_ROLE.equals(loginUser.getUserRole()), ErrorCode.NO_AUTH_ERROR, "用户没有权限");
         boolean result = removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除应用失败");
-        // 删除部署目录
-        if (oldApp.getDeployKey() != null && !oldApp.getDeployKey().isEmpty()) {
-            deleteAppDeploymentDirectory(oldApp);
-        }
+        // 发布删除事件（清理部署目录）
+        eventPublisher.publishEvent(new AppDeletedEvent(id, oldApp.getDeployKey()));
         return true;
-    }
-
-    /**
-     * 删除应用的部署目录
-     *
-     * @param app 应用对象
-     */
-    private void deleteAppDeploymentDirectory(App app) {
-        String deployDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + app.getDeployKey();
-        Thread.ofVirtual().name(String.format("delete-app-%s", System.currentTimeMillis())).start(() -> {
-            try {
-                boolean existed = FileUtil.exist(deployDir);
-                if (existed) {
-                    log.info("删除部署目录: {}", deployDir);
-                    boolean delled = FileUtil.del(deployDir);
-                    if (!delled) {
-                        log.error("删除部署目录失败: {}", deployDir);
-                    }
-                }
-            } catch (IORuntimeException e) {
-                log.error("删除部署目录时发生异常: {}", deployDir, e);
-            }
-        });
     }
 
     @Override
@@ -428,26 +405,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         // 删除应用
         return super.removeById(id);
-    }
-
-    /**
-     * 异步生成应用截图并更新封面
-     *
-     * @param appId  应用ID
-     * @param appUrl 应用访问URL
-     */
-    public void generateAppScreenshotAsync(Long appId, String appUrl) {
-        // 使用虚拟线程异步执行
-        Thread.startVirtualThread(() -> {
-            // 调用截图服务生成截图并上传
-            String screenshotUrl = screenshotService.generateAndUploadScreenshot(appUrl);
-            // 更新应用封面字段
-            App updateApp = new App();
-            updateApp.setId(appId);
-            updateApp.setCover(screenshotUrl);
-            boolean updateResult = updateById(updateApp);
-            ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用封面字段失败");
-        });
     }
 
     /**

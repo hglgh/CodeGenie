@@ -28,6 +28,13 @@ public class AiModelMonitorListener implements ChatModelListener {
     private static final String REQUEST_START_TIME_KEY = "request_start_time";
     // 用于监控上下文传递（因为请求和响应事件的触发不是同一个线程）
     private static final String MONITOR_CONTEXT_KEY = "monitor_context";
+    // 状态常量
+    public static final String STARTED = "started";
+    public static final String SUCCESS = "success";
+    public static final String ERROR = "error";
+    public static final String INPUT_TOKEN = "input";
+    public static final String OUTPUT_TOKEN = "output";
+    public static final String TOTAL_TOKEN = "total";
 
     @Resource
     private AiModelMetricsCollector aiModelMetricsCollector;
@@ -44,7 +51,7 @@ public class AiModelMonitorListener implements ChatModelListener {
         // 获取模型名称
         String modelName = requestContext.chatRequest().modelName();
         // 记录请求指标
-        aiModelMetricsCollector.recordRequest(userId, appId, modelName, "started");
+        aiModelMetricsCollector.recordRequest(userId, appId, modelName, STARTED);
     }
 
     @Override
@@ -58,7 +65,7 @@ public class AiModelMonitorListener implements ChatModelListener {
         // 获取模型名称
         String modelName = responseContext.chatResponse().modelName();
         // 记录成功请求
-        aiModelMetricsCollector.recordRequest(userId, appId, modelName, "success");
+        aiModelMetricsCollector.recordRequest(userId, appId, modelName, SUCCESS);
         // 记录响应时间
         recordResponseTime(attributes, userId, appId, modelName);
         // 记录 Token 使用情况
@@ -75,7 +82,7 @@ public class AiModelMonitorListener implements ChatModelListener {
         String modelName = errorContext.chatRequest().modelName();
         String errorMessage = errorContext.error().getMessage();
         // 记录失败请求
-        aiModelMetricsCollector.recordRequest(userId, appId, modelName, "error");
+        aiModelMetricsCollector.recordRequest(userId, appId, modelName, ERROR);
         aiModelMetricsCollector.recordError(userId, appId, modelName, errorMessage);
         // 记录响应时间（即使是错误响应）
         Map<Object, Object> attributes = errorContext.attributes();
@@ -98,9 +105,9 @@ public class AiModelMonitorListener implements ChatModelListener {
     private void recordTokenUsage(ChatModelResponseContext responseContext, String userId, String appId, String modelName) {
         TokenUsage tokenUsage = responseContext.chatResponse().metadata().tokenUsage();
         if (tokenUsage != null) {
-            aiModelMetricsCollector.recordTokenUsage(userId, appId, modelName, "input", tokenUsage.inputTokenCount());
-            aiModelMetricsCollector.recordTokenUsage(userId, appId, modelName, "output", tokenUsage.outputTokenCount());
-            aiModelMetricsCollector.recordTokenUsage(userId, appId, modelName, "total", tokenUsage.totalTokenCount());
+            aiModelMetricsCollector.recordTokenUsage(userId, appId, modelName, INPUT_TOKEN, tokenUsage.inputTokenCount());
+            aiModelMetricsCollector.recordTokenUsage(userId, appId, modelName, OUTPUT_TOKEN, tokenUsage.outputTokenCount());
+            aiModelMetricsCollector.recordTokenUsage(userId, appId, modelName, TOTAL_TOKEN, tokenUsage.totalTokenCount());
         }
     }
 }

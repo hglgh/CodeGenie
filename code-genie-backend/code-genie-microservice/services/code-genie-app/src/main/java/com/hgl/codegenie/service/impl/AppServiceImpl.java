@@ -3,7 +3,6 @@ package com.hgl.codegenie.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
@@ -17,8 +16,9 @@ import com.hgl.codegenie.common.exception.ThrowUtils;
 import com.hgl.codegenie.core.AiCodeGeneratorFacadeEnhanced;
 import com.hgl.codegenie.core.builder.VueProjectBuilder;
 import com.hgl.codegenie.core.handler.StreamHandlerExecutor;
+import com.hgl.codegenie.event.AppDeletedEvent;
+import com.hgl.codegenie.event.AppDeployedEvent;
 import com.hgl.codegenie.factory.AiCodeGenTypeRoutingServiceFactory;
-import com.hgl.codegenie.innerservice.InnerScreenshotService;
 import com.hgl.codegenie.innerservice.InnerUserService;
 import com.hgl.codegenie.mapper.AppMapper;
 import com.hgl.codegenie.model.entity.App;
@@ -42,7 +42,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -80,8 +80,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private VueProjectBuilder vueProjectBuilder;
 
-    @DubboReference
-    private InnerScreenshotService screenshotService;
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
 
     @Resource
     private ProjectDownloadService projectDownloadService;
@@ -108,7 +108,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Flux<String> contentFlux = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 7. 收集AI响应内容并在完成后记录到对话历史
         return streamHandlerExecutor
-                .doExecute(contentFlux, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+                .doExecute(contentFlux, appId, loginUser.getId(), codeGenTypeEnum);
     }
 
     @Override
@@ -162,8 +162,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
         // 10. 构建应用访问 URL
         String appDeployUrl = String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
-        // 11. 异步生成截图并更新应用封面
-        generateAppScreenshotAsync(appId, appDeployUrl);
+        // 11. 发布部署完成事件（异步截图）
+        eventPublisher.publishEvent(new AppDeployedEvent(appId, appDeployUrl));
         return appDeployUrl;
 
     }
@@ -174,7 +174,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String initPrompt = appAddRequest.getInitPrompt();
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化提示不能为空");
         User loginUser = InnerUserService.getLoginUser(request);
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        ThrowUtils.throwIf(ObjUtil.isEmpty(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         // 构造入库对象
         // 使用 AI 智能选择代码生成类型（多例模式）
         AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService = aiCodeGenTypeRoutingServiceFactory.createAiCodeGenTypeRoutingService();
@@ -197,7 +197,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "应用id不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(appName), ErrorCode.PARAMS_ERROR, "应用名称不能为空");
         User loginUser = InnerUserService.getLoginUser(request);
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        ThrowUtils.throwIf(ObjUtil.isEmpty(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         App oldApp = this.mapper.selectOneById(id);
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         // 应用创建者才能操作
@@ -217,41 +217,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Long id = deleteRequest.getId();
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "应用id不能为空");
         User loginUser = InnerUserService.getLoginUser(request);
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        ThrowUtils.throwIf(ObjUtil.isEmpty(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         App oldApp = this.mapper.selectOneById(id);
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         // 管理员或者应用创建者才能操作
         ThrowUtils.throwIf(!oldApp.getUserId().equals(loginUser.getId()) && !UserConstant.ADMIN_ROLE.equals(loginUser.getUserRole()), ErrorCode.NO_AUTH_ERROR, "用户没有权限");
         boolean result = removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除应用失败");
-        // 删除部署目录
-        if (oldApp.getDeployKey() != null && !oldApp.getDeployKey().isEmpty()) {
-            deleteAppDeploymentDirectory(oldApp);
-        }
+        // 发布删除事件（清理部署目录）
+        eventPublisher.publishEvent(new AppDeletedEvent(id, oldApp.getDeployKey()));
         return true;
-    }
-
-    /**
-     * 删除应用的部署目录
-     *
-     * @param app 应用对象
-     */
-    private void deleteAppDeploymentDirectory(App app) {
-        String deployDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + app.getDeployKey();
-        Thread.ofVirtual().name(String.format("delete-app-%s", System.currentTimeMillis())).start(() -> {
-            try {
-                boolean existed = FileUtil.exist(deployDir);
-                if (existed) {
-                    log.info("删除部署目录: {}", deployDir);
-                    boolean delled = FileUtil.del(deployDir);
-                    if (!delled) {
-                        log.error("删除部署目录失败: {}", deployDir);
-                    }
-                }
-            } catch (IORuntimeException e) {
-                log.error("删除部署目录时发生异常: {}", deployDir, e);
-            }
-        });
     }
 
     @Override
@@ -288,8 +263,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String deployKey = appQueryRequest.getDeployKey();
         Integer priority = appQueryRequest.getPriority();
         Long userId = appQueryRequest.getUserId();
-        String sortField = appQueryRequest.getSortField();
-        String sortOrder = appQueryRequest.getSortOrder();
+        String sortField = appQueryRequest.getSafeSortField(
+                Set.of("id", "appName", "priority", "createTime", "updateTime", "editTime"));
+        boolean ascending = appQueryRequest.isAscending();
         return QueryWrapper.create()
                 .eq("id", id)
                 .like("appName", appName)
@@ -299,7 +275,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 .eq("deployKey", deployKey)
                 .eq("priority", priority)
                 .eq("userId", userId)
-                .orderBy(sortField, "ascend".equals(sortOrder));
+                .orderBy(sortField, ascending);
     }
 
 
@@ -422,26 +398,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         // 删除应用
         return super.removeById(id);
-    }
-
-    /**
-     * 异步生成应用截图并更新封面
-     *
-     * @param appId  应用ID
-     * @param appUrl 应用访问URL
-     */
-    public void generateAppScreenshotAsync(Long appId, String appUrl) {
-        // 使用虚拟线程异步执行
-        Thread.startVirtualThread(() -> {
-            // 调用截图服务生成截图并上传
-            String screenshotUrl = screenshotService.generateAndUploadScreenshot(appUrl);
-            // 更新应用封面字段
-            App updateApp = new App();
-            updateApp.setId(appId);
-            updateApp.setCover(screenshotUrl);
-            boolean updateResult = updateById(updateApp);
-            ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用封面字段失败");
-        });
     }
 
     /**

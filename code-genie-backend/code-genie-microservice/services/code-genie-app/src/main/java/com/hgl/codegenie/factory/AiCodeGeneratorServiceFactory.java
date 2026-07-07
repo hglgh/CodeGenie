@@ -3,6 +3,7 @@ package com.hgl.codegenie.factory;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hgl.codegenie.AiCodeGeneratorService;
+import com.hgl.codegenie.common.config.CodeGenieProperties;
 import com.hgl.codegenie.common.exception.BusinessException;
 import com.hgl.codegenie.common.exception.ErrorCode;
 import com.hgl.codegenie.common.utils.SpringContextUtil;
@@ -45,6 +46,9 @@ public class AiCodeGeneratorServiceFactory {
 
     @Resource
     private ToolManager toolManager;
+
+    @Resource
+    private CodeGenieProperties codeGenieProperties;
 
     /**
      * AI 服务实例缓存
@@ -98,12 +102,12 @@ public class AiCodeGeneratorServiceFactory {
         // 根据 appId 构建独立的对话记忆
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .id(appId)
-                .maxMessages(100)
+                .maxMessages(codeGenieProperties.getAi().getChatMemoryMaxMessages())
                 .chatMemoryStore(redisChatMemoryStore)
                 .build();
 
         // 从数据库中获取对话历史
-        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 50);
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, codeGenieProperties.getAi().getChatHistoryLoadCount());
 
         //根据代码生成类型选择不同的模型配置
         return switch (codeGenType) {

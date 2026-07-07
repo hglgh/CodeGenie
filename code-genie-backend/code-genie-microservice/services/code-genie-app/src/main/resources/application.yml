@@ -1,12 +1,19 @@
 spring:
   application:
     name: code-genie-app
+  threads:
+    virtual:
+      enabled: true
   # session
   session:
     redis:
       namespace: spring:session
     # 30 days expire
-    timeout: 2592000
+    #PT2H 表示2小时
+    #P30D 表示30天
+    #PT30M 表示30分钟
+    #PT30S 表示30秒
+    timeout: P30D   # 30 * 24 * 60 * 60 = 2592000 （30天）
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -29,7 +36,7 @@ server:
     # 30 days expire
     session:
       cookie:
-        max-age: 2592000
+        max-age: P30D
 # springdoc-openapi
 springdoc:
   group-configs:
@@ -53,3 +60,18 @@ dubbo:
     timeout: 120000
   provider:
     timeout: 120000
+
+# CodeGenie 自定义配置
+codegenie:
+  security:
+    password-salt: ${CODEGENIE_PASSWORD_SALT:hgl}
+    default-password: ${CODEGENIE_DEFAULT_PASSWORD:12345678}
+  deploy:
+    code-output-root-dir: ${CODEGENIE_CODE_OUTPUT_DIR:}
+    code-deploy-root-dir: ${CODEGENIE_CODE_DEPLOY_DIR:}
+    screenshot-root-dir: ${CODEGENIE_SCREENSHOT_DIR:}
+    deploy-host: ${CODEGENIE_DEPLOY_HOST:http://localhost}
+    deploy-key-length: 6
+  ai:
+    chat-history-load-count: 20
+    chat-memory-max-messages: 100

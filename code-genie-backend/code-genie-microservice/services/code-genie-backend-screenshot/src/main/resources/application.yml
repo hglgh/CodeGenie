@@ -11,6 +11,7 @@ server:
 # Dubbo
 dubbo:
   registry:
+    #    address: N/A  # 表示不使用注册中心
     address: nacos://192.168.6.128:8848
     register-mode: instance
   protocol:

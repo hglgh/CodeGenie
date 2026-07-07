@@ -5,13 +5,16 @@ server:
     # cookie 30 天过期
     session:
       cookie:
-        max-age: 2592000
+        max-age: P30D
 spring:
+  threads:
+    virtual:
+      enabled: true
   session:
     redis:
       namespace: spring:session
     # session 30 天过期
-    timeout: 2592000
+    timeout: P30D
   application:
     name: code-genie-backend
   profiles:
@@ -56,3 +59,18 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+# CodeGenie 自定义配置
+codegenie:
+  security:
+    password-salt: ${CODEGENIE_PASSWORD_SALT:hgl}
+    default-password: ${CODEGENIE_DEFAULT_PASSWORD:12345678}
+  deploy:
+    code-output-root-dir: ${CODEGENIE_CODE_OUTPUT_DIR:}
+    code-deploy-root-dir: ${CODEGENIE_CODE_DEPLOY_DIR:}
+    screenshot-root-dir: ${CODEGENIE_SCREENSHOT_DIR:}
+    deploy-host: ${CODEGENIE_DEPLOY_HOST:http://localhost}
+    deploy-key-length: 6
+  ai:
+    chat-history-load-count: 20
+    chat-memory-max-messages: 100

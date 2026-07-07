@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import com.hgl.codegenie.common.config.CodeGenieProperties;
 import com.hgl.codegenie.common.exception.BusinessException;
 import com.hgl.codegenie.common.exception.ErrorCode;
 import com.hgl.codegenie.common.exception.ThrowUtils;
@@ -20,12 +21,14 @@ import com.hgl.codegenie.service.UserService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.query.QueryWrapperAdapter;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.hgl.codegenie.common.constant.UserConstant.USER_LOGIN_STATE;
@@ -39,27 +42,21 @@ import static com.hgl.codegenie.common.constant.UserConstant.USER_LOGIN_STATE;
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
+    @Resource
+    private CodeGenieProperties codeGenieProperties;
+
     @Override
     public long userRegister(UserRegisterRequest userRegisterRequest) {
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
-        //1.校验参数
-        ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword, checkPassword), ErrorCode.PARAMS_ERROR, "参数为空");
-        ThrowUtils.throwIf(userAccount.length() < 4, ErrorCode.PARAMS_ERROR, "用户账号过短");
-        ThrowUtils.throwIf(userPassword.length() < 8 || checkPassword.length() < 8, ErrorCode.PARAMS_ERROR, "用户密码过短");
-        ThrowUtils.throwIf(!userPassword.equals(checkPassword), ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
-        //2.检查账号是否重复
+        //1.检查账号是否重复
         long account = this.mapper.selectCountByQuery(new QueryWrapperAdapter<>().eq("userAccount", userAccount));
         ThrowUtils.throwIf(account > 0, ErrorCode.PARAMS_ERROR, "账号重复");
-        //3.加密
+        //2.加密
         String encryptPassword = getEncryptPassword(userPassword);
-        //4.插入数据
-        User user = new User();
-        user.setUserAccount(userAccount);
-        user.setUserPassword(encryptPassword);
-        user.setUserName("用户");
-        user.setUserRole(UserRoleEnum.USER.getValue());
+        //3.通过领域方法创建用户（内置校验）
+        User user = User.create(userAccount, userPassword, checkPassword, encryptPassword);
         boolean result = this.save(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "注册失败，数据库错误");
         return user.getId();
@@ -120,15 +117,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String userName = userQueryRequest.getUserName();
         String userProfile = userQueryRequest.getUserProfile();
         String userRole = userQueryRequest.getUserRole();
-        String sortField = userQueryRequest.getSortField();
-        String sortOrder = userQueryRequest.getSortOrder();
+        String sortField = userQueryRequest.getSafeSortField(Set.of("id", "userAccount", "userName", "createTime", "updateTime"));
+        boolean ascending = userQueryRequest.isAscending();
         return QueryWrapper.create()
                 .eq("id", id)
                 .eq("userRole", userRole)
                 .like("userAccount", userAccount)
                 .like("userName", userName)
                 .like("userProfile", userProfile)
-                .orderBy(sortField, "ascend".equals(sortOrder));
+                .orderBy(sortField, ascending);
     }
 
 
@@ -162,9 +159,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public Long addUser(UserAddRequest userAddRequest) {
         User user = new User();
         BeanUtil.copyProperties(userAddRequest, user);
-        // 默认密码 12345678
-        final String defaultPassword = "12345678";
-        String encryptPassword = this.getEncryptPassword(defaultPassword);
+        String encryptPassword = this.getEncryptPassword(codeGenieProperties.getSecurity().getDefaultPassword());
         user.setUserPassword(encryptPassword);
         int insert = this.mapper.insert(user);
         ThrowUtils.throwIf(insert <= 0, ErrorCode.OPERATION_ERROR);
@@ -173,7 +168,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
 
     private String getEncryptPassword(String userPassword) {
-        final String salt = "hgl";
+        String salt = codeGenieProperties.getSecurity().getPasswordSalt();
         return DigestUtils.md5DigestAsHex((salt + userPassword).getBytes());
     }
 }
