@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+ <trees>
+     <tree path="/code-genie-common" title="公共模块"/>
+     <tree path="/code-genie-model" title="实体模型模块"/>
+     <tree path="/code-genie-client" title="服务接口模块"/>
+     <tree path="/services/code-genie-user" title="用户服务"/>
+     <tree path="/services/code-genie-app" title="应用服务"/>
+     <tree path="/code-genie-ai" title="AI 代码生成"/>
+     <tree path="/services/code-genie-backend-screenshot" title="网页截图服务"/>
+ </trees>

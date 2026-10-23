@@ -20,6 +20,7 @@ import com.hgl.codegenie.event.AppDeletedEvent;
 import com.hgl.codegenie.event.AppDeployedEvent;
 import com.hgl.codegenie.factory.AiCodeGenTypeRoutingServiceFactory;
 import com.hgl.codegenie.innerservice.InnerUserService;
+import com.hgl.codegenie.innerservice.UserSessionUtils;
 import com.hgl.codegenie.mapper.AppMapper;
 import com.hgl.codegenie.model.entity.App;
 import com.hgl.codegenie.model.entity.User;
@@ -44,6 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
@@ -102,8 +104,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 4. 获取应用的代码生成类型
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "不支持的代码生成类型");
-        // 5. 通过校验后，添加用户消息到对话历史
-        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        // 5. 通过校验后，同步写入用户消息，保证其一定早于 AI 消息入库（单条 insert，开销可忽略）
+        try {
+            chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        } catch (Exception ex) {
+            log.error("添加对话历史失败, appId={}, userId={}", appId, loginUser.getId(), ex);
+        }
         // 6. 调用 AI 生成代码（流式）
         Flux<String> contentFlux = aiCodeGeneratorFacadeEnhanced.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 7. 收集AI响应内容并在完成后记录到对话历史
@@ -173,7 +179,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 参数校验
         String initPrompt = appAddRequest.getInitPrompt();
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化提示不能为空");
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         ThrowUtils.throwIf(ObjUtil.isEmpty(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         // 构造入库对象
         // 使用 AI 智能选择代码生成类型（多例模式）
@@ -196,7 +202,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String appName = appUpdateRequest.getAppName();
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "应用id不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(appName), ErrorCode.PARAMS_ERROR, "应用名称不能为空");
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         ThrowUtils.throwIf(ObjUtil.isEmpty(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         App oldApp = this.mapper.selectOneById(id);
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
@@ -213,10 +219,11 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteApp(DeleteRequest deleteRequest, HttpServletRequest request) {
         Long id = deleteRequest.getId();
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "应用id不能为空");
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         ThrowUtils.throwIf(ObjUtil.isEmpty(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         App oldApp = this.mapper.selectOneById(id);
         ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
@@ -298,7 +305,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Override
     public Page<AppVO> listMyAppVoByPage(AppQueryRequest appQueryRequest, HttpServletRequest request) {
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         ThrowUtils.throwIf(ObjUtil.isNull(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         int pageNum = appQueryRequest.getPageNum();
         // 限制每页最多 20 个
@@ -357,7 +364,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = this.mapper.selectOneById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         // 3. 权限校验：只有应用创建者可以下载代码
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         if (!app.getUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限下载该应用代码");
         }

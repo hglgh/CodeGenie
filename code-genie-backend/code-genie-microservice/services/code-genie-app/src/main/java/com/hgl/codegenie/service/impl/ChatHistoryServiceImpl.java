@@ -105,7 +105,11 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         // 验证消息类型是否有效
         ChatHistoryMessageTypeEnum messageTypeEnum = ChatHistoryMessageTypeEnum.getEnumByValue(messageType);
         ThrowUtils.throwIf(messageTypeEnum == null, ErrorCode.PARAMS_ERROR, String.format("不支持的消息类型: %s", messageType));
-        ChatHistory chatHistory = this.getOne(new QueryWrapperAdapter<>().eq("appId", appId).orderBy("createTime", false));
+        // 按 createTime + id 双字段降序，避免同秒内多条记录顺序不稳定导致 parentId 串链
+        ChatHistory chatHistory = this.getOne(new QueryWrapperAdapter<>()
+                .eq("appId", appId)
+                .orderBy("createTime", false)
+                .orderBy("id", false));
         Long parentId = null;
         if (chatHistory != null) {
             // 获取上一条消息的ID

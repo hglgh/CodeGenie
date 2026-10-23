@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"F:/桌面/AI-claude\" 2>/dev/null || echo \"Directory not found\")",
+      "WebSearch",
+      "mcp__sequential-thinking__sequentialthinking"
+    ]
+  }
+}

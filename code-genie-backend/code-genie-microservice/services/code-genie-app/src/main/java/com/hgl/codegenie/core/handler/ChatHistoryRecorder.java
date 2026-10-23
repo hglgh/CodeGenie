@@ -31,11 +31,21 @@ public class ChatHistoryRecorder {
                 .doOnNext(collected::append)
                 .doOnComplete(() -> {
                     String aiResponse = collected.toString();
-                    chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), userId);
+                    try {
+                        chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), userId);
+                    } catch (Exception e) {
+                        // 回调内抛异常会溢出为 onErrorDropped，只记日志，不影响流正常结束
+                        log.error("记录 AI 回复到对话历史失败, appId={}, userId={}", appId, userId, e);
+                    }
                 })
                 .doOnError(error -> {
                     String errorMessage = "AI回复失败: " + error.getMessage();
-                    chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), userId);
+                    try {
+                        chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), userId);
+                    } catch (Exception e) {
+                        // 吞掉记录异常，避免覆盖原始 error
+                        log.error("记录 AI 失败信息到对话历史失败, appId={}, userId={}", appId, userId, e);
+                    }
                 });
     }
 }

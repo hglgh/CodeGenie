@@ -6,7 +6,7 @@ import com.hgl.codegenie.common.annotation.AuthCheck;
 import com.hgl.codegenie.common.constant.UserConstant;
 import com.hgl.codegenie.common.exception.ErrorCode;
 import com.hgl.codegenie.common.exception.ThrowUtils;
-import com.hgl.codegenie.innerservice.InnerUserService;
+import com.hgl.codegenie.innerservice.UserSessionUtils;
 import com.hgl.codegenie.model.entity.ChatHistory;
 import com.hgl.codegenie.model.entity.User;
 import com.hgl.codegenie.model.request.chathistory.ChatHistoryQueryRequest;
@@ -15,7 +15,6 @@ import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -33,9 +32,6 @@ public class ChatHistoryController {
     @Resource
     private ChatHistoryService chatHistoryService;
 
-    @DubboReference
-    private InnerUserService userService;
-
     /**
      * 分页查询某个应用的对话历史（游标查询）
      *
@@ -52,7 +48,7 @@ public class ChatHistoryController {
             @RequestParam(required = false) LocalDateTime lastCreateTime,
             HttpServletRequest request
     ) {
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         Page<ChatHistory> result = chatHistoryService.listAppChatHistoryByPage(appId, pageSize, lastCreateTime, loginUser);
         return ResultUtils.success(result);
     }

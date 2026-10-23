@@ -10,7 +10,7 @@ import com.hgl.codegenie.common.annotation.AuthCheck;
 import com.hgl.codegenie.common.constant.UserConstant;
 import com.hgl.codegenie.common.exception.ErrorCode;
 import com.hgl.codegenie.common.exception.ThrowUtils;
-import com.hgl.codegenie.innerservice.InnerUserService;
+import com.hgl.codegenie.innerservice.UserSessionUtils;
 import com.hgl.codegenie.model.entity.App;
 import com.hgl.codegenie.model.entity.User;
 import com.hgl.codegenie.model.request.app.*;
@@ -18,14 +18,11 @@ import com.hgl.codegenie.model.vo.app.AppVO;
 import com.hgl.codegenie.ratelimiter.annotation.RateLimit;
 import com.hgl.codegenie.ratelimiter.enums.RateLimitType;
 import com.hgl.codegenie.service.AppService;
-
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -46,9 +43,6 @@ public class AppController {
     @Resource
     private AppService appService;
 
-    @DubboReference
-    private InnerUserService userService;
-
     /**
      * 应用聊天生成代码（流式 SSE）
      *
@@ -62,7 +56,7 @@ public class AppController {
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用id不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户输入不能为空");
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         ThrowUtils.throwIf(ObjUtil.isEmpty(loginUser), ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         // 调用服务生成代码（流式）
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
@@ -91,7 +85,7 @@ public class AppController {
         Long appId = appDeployRequest.getAppId();
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
         // 获取当前登录用户
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
         // 调用服务部署应用
         String deployUrl = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deployUrl);

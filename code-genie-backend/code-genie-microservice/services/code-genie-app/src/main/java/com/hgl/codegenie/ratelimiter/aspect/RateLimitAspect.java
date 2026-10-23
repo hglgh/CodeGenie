@@ -2,13 +2,12 @@ package com.hgl.codegenie.ratelimiter.aspect;
 
 import com.hgl.codegenie.common.exception.BusinessException;
 import com.hgl.codegenie.common.exception.ErrorCode;
-import com.hgl.codegenie.innerservice.InnerUserService;
+import com.hgl.codegenie.innerservice.UserSessionUtils;
 import com.hgl.codegenie.model.entity.User;
 import com.hgl.codegenie.ratelimiter.annotation.RateLimit;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.dubbo.config.annotation.DubboReference;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -37,9 +36,6 @@ public class RateLimitAspect {
 
     @Resource
     private RedissonClient redissonClient;
-
-    @DubboReference
-    private InnerUserService userService;
 
     @Before("@annotation(rateLimit)")
     public void doRateLimit(JoinPoint point, RateLimit rateLimit) {
@@ -79,7 +75,7 @@ public class RateLimitAspect {
                     ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
                     if (attributes != null) {
                         HttpServletRequest request = attributes.getRequest();
-                        User loginUser = InnerUserService.getLoginUser(request);
+                        User loginUser = UserSessionUtils.getLoginUser(request);
                         keyBuilder.append("user:").append(loginUser.getId());
                     } else {
                         // 无法获取请求上下文，使用IP限流

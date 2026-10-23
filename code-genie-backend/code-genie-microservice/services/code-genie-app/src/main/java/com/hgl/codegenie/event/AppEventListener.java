@@ -12,6 +12,8 @@ import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.io.File;
 
@@ -40,7 +42,8 @@ public class AppEventListener {
         }
     }
 
-    @EventListener
+    // 删目录不可逆，必须在事务提交后执行，避免回滚时数据还在、部署文件已被删
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onAppDeleted(AppDeletedEvent event) {
         if (event.deployKey() == null || event.deployKey().isEmpty()) {
             return;

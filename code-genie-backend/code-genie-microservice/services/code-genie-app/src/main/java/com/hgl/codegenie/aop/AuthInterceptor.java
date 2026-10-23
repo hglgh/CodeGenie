@@ -5,7 +5,7 @@ import com.hgl.codegenie.common.annotation.AuthCheck;
 import com.hgl.codegenie.common.exception.BusinessException;
 import com.hgl.codegenie.common.exception.ErrorCode;
 import com.hgl.codegenie.common.exception.ThrowUtils;
-import com.hgl.codegenie.innerservice.InnerUserService;
+import com.hgl.codegenie.innerservice.UserSessionUtils;
 import com.hgl.codegenie.model.entity.User;
 import com.hgl.codegenie.model.enums.UserRoleEnum;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,7 +40,7 @@ public class AuthInterceptor {
         UserRoleEnum mustRoleEnum = UserRoleEnum.getEnumByValue(mustRole);
 
         // 当前登录用户
-        User loginUser = InnerUserService.getLoginUser(request);
+        User loginUser = UserSessionUtils.getLoginUser(request);
 
         // 3.判断权限
         // 不需要权限，放行
